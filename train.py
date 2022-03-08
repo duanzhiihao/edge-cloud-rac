@@ -474,7 +474,7 @@ class TrainWrapper():
                             l_trs.append(torch.zeros(1, device=self.device))
 
                     loss = l_cls + cfg.lmbda * bpp + sum(l_trs)
-                    if loss is not None:
+                    if vq_loss is not None:
                         loss = loss + vq_loss
                     # loss is averaged over batch and gpus
                     loss = loss / float(cfg.accum_num)
