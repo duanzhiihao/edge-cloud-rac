@@ -43,7 +43,7 @@ class BottleneckResNetLayerWithIGDN(FactorizedPrior):
             dummy = z_hat.sum() + z_probs.sum()
             return dummy
         x_hat = self.decoder(z_hat)
-        return x_hat, z_probs
+        return x_hat, z_probs, None
 
 
 class BaselinePlus(BottleneckResNetLayerWithIGDN):
