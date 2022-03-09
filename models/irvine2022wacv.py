@@ -10,7 +10,7 @@ from models.registry import register_model
 
 
 class BottleneckResNetLayerWithIGDN(CompressionModel):
-    def __init__(self, num_enc_channels=16, num_target_channels=256, _flops_mode=False):
+    def __init__(self, num_enc_channels=24, num_target_channels=256, _flops_mode=False):
         super().__init__(entropy_bottleneck_channels=num_enc_channels)
         self.encoder = nn.Sequential(
             nn.Conv2d(3, num_enc_channels * 4, kernel_size=5, stride=2, padding=2, bias=False),
@@ -26,25 +26,21 @@ class BottleneckResNetLayerWithIGDN(CompressionModel):
             GDN1(num_target_channels, inverse=True),
             nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=False)
         )
-        self.updated = False
         if _flops_mode:
             self.decoder = None
         self._flops_mode = _flops_mode
 
     @torch.autocast('cuda', enabled=False)
-    def forward_entropy(self, z):
-        z = z.float()
-        z_hat, z_probs = self.entropy_bottleneck(z)
-        return z_hat, z_probs
+    def encode(self, x):
+        z = self.encoder(x)
+        z_quantized, z_probs = self.entropy_bottleneck(z)
+        return z_quantized, z_probs
 
     def forward(self, x):
-        x = x.float()
-        z = self.encoder(x)
-        z_hat, z_probs = self.forward_entropy(z)
+        z_quantized, z_probs = self.encode(x)
         if self._flops_mode:
-            dummy = z_hat.sum() + z_probs.sum()
-            return dummy
-        x_hat = self.decoder(z_hat)
+            return z_quantized, z_probs
+        x_hat = self.decoder(z_quantized)
         return x_hat, z_probs
 
 
