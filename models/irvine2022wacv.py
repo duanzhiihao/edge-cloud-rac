@@ -92,8 +92,8 @@ class BottleneckResNet(nn.Module):
         stats['l_cls'] = l_cls.item()
         for i, lt in enumerate(l_trs):
             stats[f'trs_{i}'] = lt.item()
-        stats['studt_acc'] = (torch.argmax(logits_hat, dim=1) == y).sum().item() / float(nB)
-        stats['teach_acc'] = (torch.argmax(logits_teach, dim=1) == y).sum().item() / float(nB)
+        stats['acc'] = (torch.argmax(logits_hat, dim=1) == y).sum().item() / float(nB)
+        stats['t_acc'] = (torch.argmax(logits_teach, dim=1) == y).sum().item() / float(nB)
         return stats
 
     @torch.no_grad()
