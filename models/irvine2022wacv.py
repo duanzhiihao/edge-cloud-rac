@@ -7,7 +7,6 @@ import torch.nn.functional as tnf
 from compressai.layers.gdn import GDN1
 from compressai.models.google import CompressionModel
 
-from models.base import MobileCloudBase
 from models.registry import register_model
 
 
