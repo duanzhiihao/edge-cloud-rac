@@ -14,31 +14,26 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from mycv.paths import IMAGENET_DIR
 from mycv.utils.general import increment_dir, ANSI
+from mycv.utils.pbar_utils import SimpleTable
 import mycv.utils.torch_utils as mytu
 import mycv.utils.lr_schedulers as lr_schedulers
-
 from mycv.utils.image import save_tensor_images
-from mycv.utils.coding import compute_bpp
 from mycv.datasets.imcls import get_trainloader, imcls_evaluate
 from mycv.datasets.imagenet import get_valloader
+
+from models.registry import get_model
 
 
 def get_config():
     # ====== set the run settings ======
     parser = argparse.ArgumentParser()
     # wandb setting
-    parser.add_argument('--project',    type=str,  default='mobile-cloud')
-    parser.add_argument('--group',      type=str,  default='irvine')
+    parser.add_argument('--wbproject',  type=str,  default='mobile-cloud')
+    parser.add_argument('--wbgroup',    type=str,  default='irvine')
     parser.add_argument('--wbmode',     type=str,  default='disabled')
     # model setting
-    parser.add_argument('--model',      type=str,  default='irvine-vqa')
-    parser.add_argument('--cut_after',  type=str,  default='')
-    parser.add_argument('--entropy',    type=str,  default='')
-    parser.add_argument('--lmbda',      type=float,default=1.0)
-    parser.add_argument('--en_only',    action='store_true')
-    parser.add_argument('--detach',     type=int,  default=-1)
-    parser.add_argument('--teacher',    type=str,  default='')
-    parser.add_argument('--eval_teach', action='store_true')
+    parser.add_argument('--model',      type=str,  default='irvine2022wacv')
+    parser.add_argument('--model_args', type=str,  default='{}')
     # resume setting
     parser.add_argument('--resume',     type=str,  default='')
     parser.add_argument('--pretrain',   type=str,  default='')
@@ -50,19 +45,18 @@ def get_config():
     parser.add_argument('--val_size',   type=int,  default=224)
     parser.add_argument('--val_crop_r', type=float,default=0.875)
     # optimization setting
-    parser.add_argument('--batch_size', type=int,  default=64)
+    parser.add_argument('--batch_size', type=int,  default=24)
     parser.add_argument('--accum_num',  type=int,  default=1)
     parser.add_argument('--optimizer',  type=str,  default='sgd')
-    parser.add_argument('--lr',         type=float,default=0.01)
+    parser.add_argument('--lr',         type=float,default=0.001)
     parser.add_argument('--lr_sched',   type=str,  default='cosine')
-    parser.add_argument('--lr_warmup',  type=int,  default=None)
     parser.add_argument('--wdecay',     type=float,default=0.0001)
     # training policy setting
     parser.add_argument('--epochs',     type=int,  default=100)
-    parser.add_argument('--amp',        type=bool, default=True)
-    parser.add_argument('--ema',        type=bool, default=True)
+    parser.add_argument('--amp',        action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--ema',        action=argparse.BooleanOptionalAction, default=True)
     # miscellaneous training setting
-    parser.add_argument('--skip_eval0', action='store_true')
+    parser.add_argument('--eval_first', action=argparse.BooleanOptionalAction, default=True)
     # device setting
     parser.add_argument('--fixseed',    action='store_true')
     parser.add_argument('--device',     type=int,  default=[0], nargs='+')
@@ -75,8 +69,6 @@ def get_config():
     cfg.momentum = 0.9
     # EMA
     cfg.ema_warmup_epochs = max(round(cfg.epochs / 20), 1)
-    # logging
-    cfg.metric = 'rate-err' # metric to save best model
 
     # visible device setting
     os.environ['CUDA_VISIBLE_DEVICES'] = str(cfg.device)[1:-1]
@@ -186,99 +178,48 @@ class TrainWrapper():
 
     def set_model_(self):
         cfg = self.cfg
-        mname, num_classes = cfg.model, cfg.num_classes
 
-        if mname == 'res50mc':
-            from models.mobile import ResNet50MC
-            model = ResNet50MC(cfg.cut_after, cfg.entropy)
-        elif mname == 'vgg1mc':
-            from models.mobile import VGG11MC
-            model = VGG11MC(cfg.cut_after, cfg.entropy)
-        elif mname == 'mobilev3mc':
-            from models.mobile import MobileV3MC
-            model = MobileV3MC(cfg.cut_after, cfg.entropy)
-        elif mname == 'efb0':
-            from timm.models.efficientnet import efficientnet_b0
-            model = efficientnet_b0(drop_rate=0.2, drop_path_rate=0.2)
-        elif mname == 'irvine':
-            from models.irvine2022wacv import BottleneckResNetBackbone
-            model = BottleneckResNetBackbone()
-        elif mname == 'irvine-vqa':
-            from models.irvine2022wacv import BottleneckResNetBackbone
-            model = BottleneckResNetBackbone(zdim=64, bottleneck='vqa')
-        else:
-            raise ValueError()
+        model_func = get_model(cfg.model)
+        kwargs = dict(num_classes=cfg.num_classes)
+        kwargs.update(eval(cfg.model_args))
+        model = model_func(**kwargs)
         if self.is_main:
-            print(f'Using model {type(model)}, {num_classes} classes', '\n')
-
+            print(f'Using model {type(model)}, args: {kwargs}', '\n')
         if cfg.pretrain: # (partially or fully) initialize from pretrained weights
             mytu.load_partial(model, cfg.pretrain, verbose=self.is_main)
 
         self.model = model.to(self.device)
 
-        if cfg.teacher == 'res50tv':
-            from models.teachers import ResNetTeacher
-            teacher = ResNetTeacher(source='torchvision')
-        elif cfg.teacher == 'res50timm':
-            from models.teachers import ResNetTeacher
-            teacher = ResNetTeacher(source='timm')
-        elif cfg.teacher == '':
-            from models.teachers import DummyTeacher
-            teacher = DummyTeacher(feature_num=len(self.model.cache))
-        else:
-            raise ValueError()
-        for p in teacher.parameters():
-            p.requires_grad_(False)
-        self.teacher = teacher.to(self.device)
-
-        if self.is_main and cfg.eval_teach: # test set
-            self.teacher.eval()
-            print(f'Evaluating teacher model {type(self.teacher)}...')
-            results = imcls_evaluate(self.teacher, testloader=self.valloader)
-            print(results, '\n')
-        self.teacher.train()
-
         if self.distributed: # DDP mode
             self.model = DDP(model, device_ids=[self.local_rank], output_device=self.local_rank,
                              find_unused_parameters=True)
         elif len(cfg.device) > 1: # DP mode
+            raise DeprecationWarning()
             print(f'DP mode on GPUs {cfg.device}', '\n')
             self.model = torch.nn.DataParallel(model, device_ids=cfg.device)
-
-    def set_loss_(self):
-        self.loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
 
     def set_optimizer_(self):
         cfg, model = self.cfg, self.model
 
         # different optimization setting for different layers
         pgen, pgb, pgw, pgo = [], [], [], []
-        pg_info = {
-            'bn/bias': [],
-            'weights': [],
-            'other': []
-        }
-        if cfg.en_only:
-            for p in model.parameters():
-                p.requires_grad_(False)
-            for p in model.entropy_model.parameters():
-                p.requires_grad_(True)
-            _parameters = model.entropy_model.named_parameters()
-        else:
-            _parameters = model.named_parameters()
-        for k, v in _parameters:
+        pg_info = defaultdict(list)
+        for k, v in model.named_parameters():
             assert isinstance(k, str) and isinstance(v, torch.Tensor)
-            if 'entropy_model' in k:
+            if not v.requires_grad:
+                continue
+            if ('entropy' in k) or ('bottleneck' in k):
                 pgen.append(v)
+                pg_info['entropy'].append(f'{k:<96s}, {v.shape}')
             elif ('.bn' in k) or ('.bias' in k): # batchnorm or bias
                 pgb.append(v)
-                pg_info['bn/bias'].append((k, v.shape))
+                pg_info['bn/bias'].append(f'{k:<96s}, {v.shape}')
             elif '.weight' in k: # conv or linear weights
                 pgw.append(v)
-                pg_info['weights'].append((k, v.shape))
+                pg_info['weights'].append(f'{k:<96s}, {v.shape}')
             else: # other parameters
                 pgo.append(v)
-                pg_info['other'].append((k, v.shape))
+                pg_info['other'].append(f'{k:<96s}, {v.shape}')
         parameters = [
             {'params': pgen, 'lr': cfg.lr, 'weight_decay': 0.0},
             {'params': pgb, 'lr': cfg.lr, 'weight_decay': 0.0},
@@ -295,10 +236,8 @@ class TrainWrapper():
             raise ValueError(f'Unknown optimizer: {cfg.optimizer}')
 
         if self.is_main:
-            print('optimizer parameter groups [b,w,o]:', [len(pg['params']) for pg in parameters])
-            print('pgo parameters:')
-            for k, vshape in pg_info['other']:
-                print(k, vshape)
+            print('optimizer parameter groups:', *[f'[{k}: {len(pg)}]' for k, pg in pg_info.items()])
+            self.pg_info_to_log = pg_info
             print()
 
         self.optimizer = optimizer
@@ -307,7 +246,7 @@ class TrainWrapper():
     def set_logging_dir_(self):
         cfg = self.cfg
 
-        log_parent = Path(f'runs/{cfg.project}')
+        log_parent = Path(f'runs/{cfg.wbproject}')
         if cfg.resume: # resume
             assert not cfg.pretrain, '--resume not compatible with --pretrain'
             run_name = cfg.resume
@@ -331,15 +270,15 @@ class TrainWrapper():
                 os.makedirs(log_dir, exist_ok=False)
                 print(str(self.model), file=open(log_dir / 'model.txt', 'w'))
                 json.dump(cfg.__dict__, fp=open(log_dir / 'config.json', 'w'), indent=2)
+                json.dump(self.pg_info_to_log, fp=open(log_dir / 'optimizer.json', 'w'), indent=2)
                 print('Training config:\n', cfg, '\n')
             start_epoch = 0
             results = defaultdict(float)
 
         cfg.log_dir = str(log_dir)
-        self._log_dir      = log_dir
-        self._start_epoch  = start_epoch
-        self._results      = results
-        self._best_fitness = results[cfg.metric]
+        self._log_dir     = log_dir
+        self._start_epoch = start_epoch
+        self._best_loss   = results['loss']
 
     def set_wandb_(self):
         cfg = self.cfg
@@ -353,8 +292,8 @@ class TrainWrapper():
             rid = None
         # initialize wandb
         import wandb
-        run_name = f'{self._log_dir.stem}-{cfg.entropy}'
-        wbrun = wandb.init(project=cfg.project, group=cfg.group, name=run_name,
+        run_name = f'{self._log_dir.stem} {self.cfg.model_args}'
+        wbrun = wandb.init(project=cfg.wbproject, group=cfg.wbgroup, name=run_name,
                            config=cfg, dir='runs/', id=rid, resume='allow',
                            save_code=True, mode=cfg.wbmode)
         cfg = wbrun.config
@@ -399,7 +338,6 @@ class TrainWrapper():
         self.set_device_()
         self.set_dataset_()
         self.set_model_()
-        self.set_loss_()
         self.set_optimizer_()
 
         # logging
@@ -408,6 +346,7 @@ class TrainWrapper():
         if self.is_main:
             self.set_wandb_()
             self.set_ema_()
+            self.stats_table = SimpleTable(['Epoch', 'GPU_mem', 'lr'])
 
         cfg = self.cfg
         model = self.model
@@ -421,62 +360,25 @@ class TrainWrapper():
 
             pbar = enumerate(self.trainloader)
             if self.is_main:
-                self.init_logging_()
-                if not (epoch == self._start_epoch and cfg.skip_eval0):
-                    # if cfg.skip_eval0, then skip the first evaluation
+                if (epoch != self._start_epoch) or cfg.eval_first:
                     self.evaluate(epoch, niter=epoch*len(self.trainloader))
 
-                print('\n' + self._pbar_title)
+                self.init_logging_()
                 pbar = tqdm(pbar, total=len(self.trainloader))
 
             self.adjust_lr_(epoch)
-            if cfg.en_only:
-                model.eval()
-                model.entropy_model.train()
-            else:
-                model.train()
-            if epoch <= cfg.detach:
-                model.detach = True
-            else:
-                model.detach = False
-
+            model.train()
             for bi, (imgs, labels) in pbar:
                 niter = epoch * len(self.trainloader) + bi
 
                 imgs = imgs.to(device=self.device)
                 labels = labels.to(device=self.device)
 
-                # teacher model
-                with torch.no_grad():
-                    tgt_logits = self.teacher(imgs)
-                    teacher_features = self.teacher.cache
-
                 # forward
                 with amp.autocast(enabled=cfg.amp):
-                    yhat, p_z, vq_loss = model(imgs)
-                    assert yhat.shape == (imgs.shape[0], cfg.num_classes)
-                    l_cls = self.loss_func(yhat, labels)
-                    if p_z is not None:
-                        bpp = -1.0 * torch.log2(p_z).mean(0).sum() / (imgs.shape[2]*imgs.shape[3])
-                    else:
-                        bpp = torch.zeros(1, device=self.device)
-
-                    # teacher-student loss
-                    student_features = mytu.de_parallel(model).cache
-                    l_trs = []
-                    assert len(student_features) == len(teacher_features)
-                    for fake, real in zip(student_features, teacher_features):
-                        if (fake is not None) and (real is not None):
-                            assert fake.shape == real.shape, f'fake{fake.shape}, real{real.shape}'
-                            _lt = tnf.mse_loss(fake, real, reduction='mean')
-                            l_trs.append(_lt)
-                        else:
-                            l_trs.append(torch.zeros(1, device=self.device))
-
-                    loss = l_cls + cfg.lmbda * bpp + sum(l_trs)
-                    if vq_loss is not None:
-                        loss = loss + vq_loss
-                    # loss is averaged over batch and gpus
+                    stats = model.forward_train(imgs, labels)
+                    loss = stats['loss']
+                    # loss should be averaged over batch (and if DDP, also gpus)
                     loss = loss / float(cfg.accum_num)
                 self.scaler.scale(loss).backward()
                 # gradient averaged between devices in DDP mode
@@ -486,11 +388,9 @@ class TrainWrapper():
                     self.optimizer.zero_grad()
                     if self.ema is not None:
                         self.ema.update(model)
-                        # if epoch < cfg.lr_warmup: # keep copying weights during warmup period
-                        #     self.ema.updates = 0
 
                 if self.is_main:
-                    self.logging(pbar, epoch, bi, niter, imgs, labels, yhat, p_z, l_cls, bpp, loss, l_trs)
+                    self.logging(pbar, epoch, bi, niter, imgs, stats)
             if self.is_main:
                 pbar.close()
             if self.distributed: # If DDP mode, synchronize model parameters on all gpus
@@ -499,8 +399,8 @@ class TrainWrapper():
                 mytu.torch_distributed_check_equivalence(model, log_path=self._log_dir/'ddp.txt')
 
         if self.is_main:
-            self.evaluate(epoch, niter)
-            print('Training finished. results:', self._results)
+            results = self.evaluate(epoch, niter)
+            print('Training finished. results:', results)
         if self.distributed:
             torch.distributed.destroy_process_group()
 
@@ -521,37 +421,39 @@ class TrainWrapper():
             param_group['lr'] = cfg.lr * lrf
 
     def init_logging_(self):
-        l_trs = [f'trs_{i}' for i in range(len(mytu.de_parallel(self.model).cache))]
-        self._epoch_stat_keys = ['bpp', 'bpdim', 'l_cls', *l_trs , 'loss', 'tr_acc %']
-        self._epoch_stat_vals = torch.zeros(len(self._epoch_stat_keys))
-        sn = 5 + len(self._epoch_stat_keys)
-        self._pbar_title = ('{:^10s}|' * sn).format(
-            'Epoch', 'GPU_mem', 'lr', *self._epoch_stat_keys, 'top1 %', 'top5 %',
-        )
-        self._pbar_title = ANSI.headerstr(self._pbar_title)
-        self._msg = ''
+        # initialize stats table and progress bar
+        for k in self.stats_table.keys():
+            self.stats_table[k] = 0.0
+        self._pbar_header = self.stats_table.get_header()
+        print('\n', self._pbar_header)
+        time.sleep(0.1)
 
     @torch.no_grad()
-    def logging(self, pbar, epoch, bi, niter, imgs, labels, yhat, p_z, l_cls, bpp, loss, l_trs):
+    def logging(self, pbar, epoch, bi, niter, imgs, stats):
         cfg = self.cfg
-        cur_lr = self.optimizer.param_groups[0]['lr']
-        bpdim = - torch.log2(p_z.detach()).mean().cpu().item() if p_z is not None else 0
-        acc = compute_acc(yhat.detach(), labels)
-        l_trs = [t.item() for t in l_trs]
-        stats = torch.Tensor(
-            [bpp.item(), bpdim, l_cls.item(), *l_trs, loss.item(), acc]
-        )
-        self._epoch_stat_vals.mul_(bi).add_(stats).div_(bi+1)
+
+        self.stats_table['Epoch'] = f'{epoch}/{cfg.epochs-1}'
+
         mem = torch.cuda.max_memory_allocated(self.device) / 1e9
         torch.cuda.reset_peak_memory_stats()
-        sn = len(self._epoch_stat_keys) + 2
-        msg = ('{:^10s}|' * 2 + '{:^10.4g}|' + '{:^10.4g}|' * sn).format(
-            f'{epoch}/{cfg.epochs-1}', f'{mem:.3g}G', cur_lr,
-            *self._epoch_stat_vals,
-            100*self._results['top1'], 100*self._results['top5'],
-        )
-        pbar.set_description(msg)
-        self._msg = msg
+        self.stats_table['GPU_mem'] = f'{mem:.3g}G'
+
+        cur_lr = self.optimizer.param_groups[0]['lr']
+        self.stats_table['lr'] = cur_lr
+
+        keys_to_log = []
+        for k, v in stats.items():
+            if isinstance(v, torch.Tensor) and v.numel() == 1:
+                v = v.detach().cpu().item()
+            assert isinstance(v, (float, int))
+            prev = self.stats_table.get(k, 0.0)
+            self.stats_table[k] = (prev * bi + v) / (bi + 1)
+            keys_to_log.append(k)
+        pbar_header, pbar_body = self.stats_table.update()
+        if pbar_header != self._pbar_header:
+            print(pbar_header)
+            self._pbar_header = pbar_header
+        pbar.set_description(pbar_body)
 
         # Weights & Biases logging
         if niter % 100 == 0:
@@ -561,10 +463,10 @@ class TrainWrapper():
             _log_dic = {
                 'general/lr': cur_lr,
                 'ema/n_updates': self.ema.updates if cfg.ema else 0,
-                'ema0/decay': self.ema.get_decay() if cfg.ema else 0
+                'ema/decay': self.ema.get_decay() if cfg.ema else 0
             }
             _log_dic.update(
-                {'train/'+k: v for k,v in zip(self._epoch_stat_keys, self._epoch_stat_vals)}
+                {'train/'+k: self.stats_table[k] for k in keys_to_log}
             )
             self.wbrun.log(_log_dic, step=niter)
 
@@ -572,16 +474,8 @@ class TrainWrapper():
         assert self.is_main
         # Evaluation
         _log_dic = {'general/epoch': epoch}
-        _eval_model = mytu.de_parallel(self.model)
-        _eval_model.eval()
-        _eval_model.init_testing()
+        _eval_model = mytu.de_parallel(self.model).eval()
         results = imcls_evaluate(_eval_model, testloader=self.valloader)
-        num, bpp, bpd = _eval_model.testing_stats
-        results.update({
-            'bits_per_pixel': bpp,
-            'bits_per_dim': bpd,
-            'rate-err': bpp + 1 - results['top1']
-        })
         _log_dic.update({'metric/plain_val_'+k: v for k,v in results.items()})
         # save last checkpoint
         checkpoint = {
@@ -596,14 +490,7 @@ class TrainWrapper():
 
         if self.cfg.ema:
             _ema = self.ema.ema.eval()
-            _ema.init_testing()
             results = imcls_evaluate(_ema, testloader=self.valloader)
-            num, bpp, bpd = _eval_model.testing_stats
-            results.update({
-                'bits_per_pixel': bpp,
-                'bits_per_dim': bpd,
-                'rate-err': bpp + 1 - results['top1']
-            })
             _log_dic.update({f'metric/ema_val_'+k: v for k,v in results.items()})
             # save last checkpoint of EMA
             checkpoint = {
@@ -617,33 +504,21 @@ class TrainWrapper():
         # wandb log
         self.wbrun.log(_log_dic, step=niter)
         # Log evaluation results to file
-        _cur_fitness = results[self.cfg.metric]
-        msg = self._msg + '||' + '%10.4g' * 1 % (_cur_fitness)
+        msg = self.stats_table.get_body() + '||' + '%10.4g' % results['loss']
         with open(self._log_dir / 'results.txt', 'a') as f:
             f.write(msg + '\n')
 
-        self._results = results
+        return results
 
     def _save_if_best(self, checkpoint):
         assert self.is_main
         # save checkpoint if it is the best so far
-        metric = self.cfg.metric
-        fitness = checkpoint['results'][metric]
-        if fitness < self._best_fitness:
-            self._best_fitness = fitness
+        cur_loss = checkpoint['results']['loss']
+        if cur_loss < self._best_loss:
+            self._best_loss = cur_loss
             svpath = self._log_dir / 'best.pt'
             torch.save(checkpoint, svpath)
-            print(f'Get best {metric} = {fitness}. Saved to {svpath}.')
-
-
-def compute_acc(p: torch.Tensor, labels: torch.LongTensor):
-    assert not p.requires_grad and p.device == labels.device
-    assert p.dim() == 2 and p.shape[0] == labels.shape[0]
-    _, p_cls = torch.max(p, dim=1)
-    tp = (p_cls == labels)
-    acc = float(tp.sum()) / len(tp)
-    assert 0 <= acc <= 1
-    return acc * 100.0
+            print(f'Get best loss = {cur_loss}. Saved to {svpath}.')
 
 
 def main():
