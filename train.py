@@ -33,7 +33,7 @@ def get_config():
     parser.add_argument('--wbmode',     type=str,  default='disabled')
     # model setting
     parser.add_argument('--model',      type=str,  default='irvine2022wacv')
-    parser.add_argument('--model_args', type=str,  default='{}')
+    parser.add_argument('--model_args', type=str,  default='')
     # resume setting
     parser.add_argument('--resume',     type=str,  default='')
     parser.add_argument('--pretrain',   type=str,  default='')
@@ -181,7 +181,7 @@ class TrainWrapper():
 
         model_func = get_model(cfg.model)
         kwargs = dict(num_classes=cfg.num_classes)
-        kwargs.update(eval(cfg.model_args))
+        kwargs.update(eval(f'dict({cfg.model_args})'))
         model = model_func(**kwargs)
         if self.is_main:
             print(f'Using model {type(model)}, args: {kwargs}', '\n')
@@ -292,7 +292,7 @@ class TrainWrapper():
             rid = None
         # initialize wandb
         import wandb
-        run_name = f'{self._log_dir.stem} {self.cfg.model_args}'
+        run_name = f'{self._log_dir.stem} {cfg.model_args}'
         wbrun = wandb.init(project=cfg.wbproject, group=cfg.wbgroup, name=run_name,
                            config=cfg, dir='runs/', id=rid, resume='allow',
                            save_code=True, mode=cfg.wbmode)
