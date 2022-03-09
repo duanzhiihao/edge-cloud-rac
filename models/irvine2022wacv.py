@@ -67,7 +67,7 @@ class BottleneckResNet(nn.Module):
 
         self.bpp_lmb = float(bpp_lmb)
 
-    def forward_train(self, x, y):
+    def forward(self, x, y):
         nB, _, imH, imW = x.shape
         x1, p_z = self.bottleneck_layer(x)
         x2 = self.layer2(x1)

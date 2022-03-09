@@ -376,7 +376,7 @@ class TrainWrapper():
 
                 # forward
                 with amp.autocast(enabled=cfg.amp):
-                    stats = model.forward_train(imgs, labels)
+                    stats = model(imgs, labels)
                     loss = stats['loss']
                     # loss should be averaged over batch (and if DDP, also gpus)
                     loss = loss / float(cfg.accum_num)
