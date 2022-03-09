@@ -210,16 +210,16 @@ class TrainWrapper():
                 continue
             if ('entropy' in k) or ('bottleneck' in k):
                 pgen.append(v)
-                pg_info['entropy'].append(f'{k:<96s}, {v.shape}')
+                pg_info['entropy'].append(f'{k:<80s} {v.shape}')
             elif ('.bn' in k) or ('.bias' in k): # batchnorm or bias
                 pgb.append(v)
-                pg_info['bn/bias'].append(f'{k:<96s}, {v.shape}')
+                pg_info['bn/bias'].append(f'{k:<80s} {v.shape}')
             elif '.weight' in k: # conv or linear weights
                 pgw.append(v)
-                pg_info['weights'].append(f'{k:<96s}, {v.shape}')
+                pg_info['weights'].append(f'{k:<80s} {v.shape}')
             else: # other parameters
                 pgo.append(v)
-                pg_info['other'].append(f'{k:<96s}, {v.shape}')
+                pg_info['other'].append(f'{k:<80s} {v.shape}')
         parameters = [
             {'params': pgen, 'lr': cfg.lr, 'weight_decay': 0.0},
             {'params': pgb, 'lr': cfg.lr, 'weight_decay': 0.0},
