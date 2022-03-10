@@ -235,6 +235,12 @@ class TrainWrapper():
         else:
             raise ValueError(f'Unknown optimizer: {cfg.optimizer}')
 
+        if cfg.pretrain:
+            try:
+                optimizer.load_state_dict(torch.load(cfg.pretrain)['optimizer'])
+            except Exception as e:
+                print('Failed loading optimizer. Error message:', e)
+
         if self.is_main:
             print('optimizer parameter groups:', *[f'[{k}: {len(pg)}]' for k, pg in pg_info.items()])
             self.pg_info_to_log = pg_info
@@ -246,6 +252,7 @@ class TrainWrapper():
     def set_logging_dir_(self):
         cfg = self.cfg
 
+        prev_loss = 1e8
         log_parent = Path(f'runs/{cfg.wbproject}')
         if cfg.resume: # resume
             assert not cfg.pretrain, '--resume not compatible with --pretrain'
@@ -258,10 +265,11 @@ class TrainWrapper():
             self.optimizer.load_state_dict(checkpoint['optimizer'])
             self.scaler.load_state_dict(checkpoint['scaler'])
             start_epoch = checkpoint['epoch']
-            results = checkpoint.get('results', defaultdict(float))
+            prev_result = checkpoint.get('results', None)
+            prev_loss = prev_result['loss'] if prev_result is not None else prev_loss
             if self.is_main:
                 print(f'Resuming run {log_dir}. Loaded checkpoint from {ckpt_path}.',
-                      f'Epoch={start_epoch}, results={results}')
+                      f'Epoch={start_epoch}, results={prev_result}')
         else: # new experiment
             _base = f'{cfg.model}'
             run_name = increment_dir(dir_root=log_parent, name=_base)
@@ -273,12 +281,11 @@ class TrainWrapper():
                 json.dump(self.pg_info_to_log, fp=open(log_dir / 'optimizer.json', 'w'), indent=2)
                 print('Training config:\n', cfg, '\n')
             start_epoch = 0
-            results = defaultdict(float)
 
         cfg.log_dir = str(log_dir)
         self._log_dir     = log_dir
         self._start_epoch = start_epoch
-        self._best_loss   = results['loss']
+        self._best_loss   = prev_loss
 
     def set_wandb_(self):
         cfg = self.cfg
