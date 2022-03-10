@@ -1,5 +1,6 @@
 runs/
 _test*
+_*.sh
 
 
 # Byte-compiled / optimized / DLL files
