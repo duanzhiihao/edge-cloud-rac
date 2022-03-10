@@ -58,17 +58,24 @@ def plot_mobilecloud():
     # plot(wacv2022_paper['bpp'], wacv2022_paper['acc'], label='Baseline: Irvine 2022 WACV (paper)')
 
     wacv2022_code = {
-        'acc': [0.5737, 0.71608, 0.74226, 0.75096, 0.75314, 0.75632, 0.75928, 0.75916],
-        'bpp': [0.1465677, 0.330722, 0.595901, 0.886827, 1.311912, 1.831621, 2.592045, 3.653037]
+        'acc': [0.5737,    0.71608,  0.74226,  0.75096,  0.75314,  0.75632,  0.75928,  0.75916],
+        'bpp': [0.1465677, 0.330722, 0.595901, 0.886827, 1.311912, 1.831621, 2.592045, 3.653037],
+        'beta': [1.28,     0.64,     0.32,     0.16,     0.08,     0.04,     0.02,     0.01]
     }
     wacv2022_code['acc'] = [f*100 for f in wacv2022_code['acc']]
     plot(wacv2022_code['bpp'], wacv2022_code['acc'], label='Baseline: Irvine 2022 WACV (code)')
 
     wacv2022 = {
-        'acc': [71.42, 73.25],
-        'bpp': [0.3237, 0.5742]
+        'acc': [71.42, 73.25, 74.13],
+        'bpp': [0.3237, 0.5742, 0.8447]
     }
     plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl.)')
+
+    wacv2022 = {
+        'acc': [76.15],
+        'bpp': [3.342]
+    }
+    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. v2)')
 
     vq = {
         'acc': [71.07, 71.96, 72.85],
@@ -80,7 +87,7 @@ def plot_mobilecloud():
     plt.grid(True, alpha=0.32)
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
-    plt.xscale('log')
+    # plt.xscale('log')
     # plt.xlim(0.1, 1.6)
     # plt.ylim(22, 42)
     plt.ylabel('Top-1 acc.', fontdict=default_font)
