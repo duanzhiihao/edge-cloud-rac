@@ -399,7 +399,7 @@ class TrainWrapper():
                 mytu.torch_distributed_check_equivalence(model, log_path=self._log_dir/'ddp.txt')
 
         if self.is_main:
-            results = self.evaluate(epoch, niter)
+            results = self.evaluate(epoch+1, niter)
             print('Training finished. results:', results)
         if self.distributed:
             torch.distributed.destroy_process_group()
