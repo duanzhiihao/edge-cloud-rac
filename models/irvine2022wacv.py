@@ -138,6 +138,13 @@ class BottleneckResNet(nn.Module):
         stats['loss'] = float(l_cls + self.bpp_lmb * bppix)
         return stats
 
+    def state_dict(self):
+        msd = super().state_dict()
+        for k in list(msd.keys()):
+            if '_teacher' in k:
+                msd.pop(k)
+        return msd
+
 
 @register_model
 def irvine2022wacv(num_classes=1000, bpp_lmb=1.28, teacher=True):
