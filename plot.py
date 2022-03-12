@@ -17,6 +17,7 @@ def plot(x, y, label, ls='-', ax=None):
 
 
 def plot_mobilecloud():
+    plt.figure(figsize=(7,6))
     jpeg_mobilev3 = {
         'acc': [0.6623, 0.711, 0.7325, 0.7385, 0.7409],
         'bpp': [0.22366, 0.31079, 0.46838, 0.60333, 0.66786]
@@ -31,6 +32,8 @@ def plot_mobilecloud():
     }
     # plot(factorized['bpp'], factorized['acc'], label='MobileNetV3-L + Factorized entropy model')
 
+    plt.plot([0.0, 3.0], [76.15, 76.15], label='ResNet-50, Original',
+             marker='', linestyle='--', linewidth=1.6, color='gray')
 
     jpeg_res50 = {
         'acc': [72.57, 71.27, 67.71, 60.58],
@@ -63,32 +66,39 @@ def plot_mobilecloud():
         'beta': [1.28,     0.64,     0.32,     0.16,     0.08,     0.04,     0.02,     0.01]
     }
     wacv2022_code['acc'] = [f*100 for f in wacv2022_code['acc']]
-    plot(wacv2022_code['bpp'], wacv2022_code['acc'], label='Baseline: Irvine 2022 WACV (code)')
+    plot(wacv2022_code['bpp'], wacv2022_code['acc'], label='Baseline (Irvine 2022 WACV)')
 
     wacv2022 = {
-        'acc': [71.42, 73.25, 74.13],
-        'bpp': [0.3237, 0.5742, 0.8447]
+        'acc': [71.42, 73.25, 74.66],
+        'bpp': [0.3237, 0.5742, 0.8305]
     }
     plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl.)')
 
-    wacv2022 = {
-        'acc': [76.15],
-        'bpp': [3.342]
-    }
-    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. v2)')
+    # wacv2022 = {
+    #     'acc': [76.21],
+    #     'bpp': [3.267]
+    # }
+    # plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. v2)')
 
     vq = {
         'acc': [71.07, 71.96, 72.85],
         'bpp': [0.2883, 0.3467, 0.4636]
     }
-    plot(vq['bpp'], vq['acc'], label='Baseline (my impl.) w/ VQ')
+    plot(vq['bpp'], vq['acc'], label='Baseline w/ VQ')
+
+    ours = {
+        'acc': [73.28, 75.22],
+        'bpp': [0.5347, 0.97605]
+    }
+    plot(ours['bpp'], ours['acc'], label='Baseline w/ mobilenet encoder')
 
     plt.title('Rate-accuracy trade-off on ImageNet')
     plt.grid(True, alpha=0.32)
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     # plt.xscale('log')
-    # plt.xlim(0.1, 1.6)
+    plt.xlim(0.1, 1.6)
+    # plt.yticks(list(range()))
     # plt.ylim(22, 42)
     plt.ylabel('Top-1 acc.', fontdict=default_font)
     # plt.title('Rate-distortion curves')

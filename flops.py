@@ -7,8 +7,8 @@ def main():
     # from models.irvine2022wacv import BottleneckResNetLayerWithIGDN
     # model = BottleneckResNetLayerWithIGDN(num_enc_channels=24, _flops_mode=True)
     # model = BottleneckEncoder(num_enc_channels=24, _flops_mode=True)
-    from models.irvine_plus import plus_v1
-    model = plus_v1().bottleneck_layer
+    from models.irvine_plus import plus_v1, plus_conv
+    model = plus_conv().bottleneck_layer
     model.flops_mode_()
 
     model.eval()
