@@ -374,6 +374,8 @@ class TrainWrapper():
                 pbar = tqdm(pbar, total=len(self.trainloader))
 
             self.adjust_lr_(epoch)
+            if hasattr(mytu.de_parallel(self.model), 'set_epoch'):
+                mytu.de_parallel(self.model).set_epoch(epoch, cfg.epochs, verbose=self.is_main)
             model.train()
             for bi, (imgs, labels) in pbar:
                 niter = epoch * len(self.trainloader) + bi
