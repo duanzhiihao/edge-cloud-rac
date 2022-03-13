@@ -92,12 +92,19 @@ def plot_mobilecloud():
     }
     plot(ours['bpp'], ours['acc'], label='Baseline w/ mobilenet encoder')
 
+    ours = {
+        'acc': [75.6],
+        'bpp': [1.456]
+    }
+    plot(ours['bpp'], ours['acc'], label='Baseline w/ convnext encoder')
+
     plt.title('Rate-accuracy trade-off on ImageNet')
     plt.grid(True, alpha=0.32)
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
-    # plt.xscale('log')
-    plt.xlim(0.1, 1.6)
+    plt.xscale('log')
+    plt.xlim(0.1, 2.0)
+    # plt.xticks([i/10.0 for i in range(1,20)])
     # plt.yticks(list(range()))
     # plt.ylim(22, 42)
     plt.ylabel('Top-1 acc.', fontdict=default_font)
