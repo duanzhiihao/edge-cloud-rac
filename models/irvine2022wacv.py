@@ -167,7 +167,7 @@ class BottleneckResNet(nn.Module):
         stats['top5'] = correct5.any(dim=1).float().mean().item()
         bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
         stats['bppix'] = bppix.item()
-        stats['loss'] = float(l_cls + self.bpp_lmb * bppix)
+        stats['loss'] = float(l_cls + self.initial_bpp_lmb * bppix)
         return stats
 
     def state_dict(self):
