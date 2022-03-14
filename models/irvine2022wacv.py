@@ -71,9 +71,7 @@ class BottleneckResNet(nn.Module):
         self.initial_cls_lmb = 1.0
 
     def reset_lmb_(self):
-        self.bpp_lmb = self.initial_bpp_lmb
-        self.trs_lmb = 1.0
-        self.cls_lmb = 1.0
+        self.lambdas = (1.0, 1.0, self.initial_bpp_lmb) # cls, trs, bpp
 
     def set_epoch(self, epoch, total_epochs, verbose=True):
         if epoch < total_epochs // 2: # fix classifier; train encoder and decoder
@@ -81,7 +79,7 @@ class BottleneckResNet(nn.Module):
                                      self.layer4.parameters(), self.fc.parameters()):
                 p.requires_grad_(False)
             self.reset_lmb_()
-            self.cls_lmb = 0.0
+            self.lambdas[0] = 0.0
         else: # fix encoder and decoder
             for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
                                      self.layer4.parameters(), self.fc.parameters()):
@@ -90,9 +88,7 @@ class BottleneckResNet(nn.Module):
                 p.requires_grad_(False)
             for p in self.bottleneck_layer.entropy_bottleneck.parameters():
                 p.requires_grad_(False)
-            self.bpp_lmb = 0.0
-            self.trs_lmb = 0.0
-            self.cls_lmb = 1.0
+            self.lambdas = (1.0, 0.0, 0.0)
         if verbose:
             print(f'Epoch={epoch}/{total_epochs}, bpp_lmb={self.bpp_lmb}, trs_lmb={self.trs_lmb}')
 
@@ -111,12 +107,13 @@ class BottleneckResNet(nn.Module):
         # label prediction loss
         l_cls = tnf.cross_entropy(logits_hat, y, reduction='mean')
         # transfer loss
-        if self.trs_lmb > 0:
+        lmb_cls, lmb_trs, lmb_bpp = self.lambdas
+        if lmb_trs > 0:
             logits_teach, features_teach = self.forward_teacher(x)
             l_trs = self.transfer_loss([x1, x2, x3, x4], features_teach)
         else:
-            l_trs = [torch.zeros(1, device=x.device)]
-        loss = self.cls_lmb * l_cls + self.trs_lmb * sum(l_trs) + self.bpp_lmb * bppix
+            l_trs = [torch.zeros(1, device=x.device) for _ in range(4)]
+        loss = lmb_cls * l_cls + lmb_trs * sum(l_trs) + lmb_bpp * bppix
 
         stats = OrderedDict()
         stats['loss'] = loss
@@ -125,7 +122,7 @@ class BottleneckResNet(nn.Module):
         for i, lt in enumerate(l_trs):
             stats[f'trs_{i}'] = lt.item()
         stats['acc'] = (torch.argmax(logits_hat, dim=1) == y).sum().item() / float(nB)
-        if self.trs_lmb > 0:
+        if lmb_trs > 0:
             stats['t_acc'] = (torch.argmax(logits_teach, dim=1) == y).sum().item() / float(nB)
         else:
             stats['t_acc'] = -1.0
