@@ -90,7 +90,7 @@ class BottleneckResNet(nn.Module):
                 p.requires_grad_(False)
             self.lambdas = [1.0, 0.0, 0.0]
         if verbose:
-            print(f'Epoch={epoch}/{total_epochs}, bpp_lmb={self.bpp_lmb}, trs_lmb={self.trs_lmb}')
+            print(f'Epoch={epoch}/{total_epochs}, lambdas (cls, transfer, bppix)={self.lambdas}')
 
     def forward(self, x, y):
         nB, _, imH, imW = x.shape
