@@ -8,6 +8,7 @@ from compressai.layers.gdn import GDN1
 from compressai.models.google import CompressionModel
 
 from models.registry import register_model
+from mycv.utils.lr_schedulers import get_cosine_lrf
 
 
 class BottleneckResNetLayerWithIGDN(CompressionModel):
@@ -74,21 +75,23 @@ class BottleneckResNet(nn.Module):
         self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
 
     def set_epoch(self, epoch, total_epochs, verbose=True):
-        if epoch < total_epochs // 2: # fix classifier; train encoder and decoder
-            for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
-                                     self.layer4.parameters(), self.fc.parameters()):
-                p.requires_grad_(False)
-            self.reset_lmb_()
-            self.lambdas[0] = 0.0
-        else: # fix encoder and decoder
-            for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
-                                     self.layer4.parameters(), self.fc.parameters()):
-                p.requires_grad_(True)
-            for p in self.bottleneck_layer.encoder.parameters():
-                p.requires_grad_(False)
-            for p in self.bottleneck_layer.entropy_bottleneck.parameters():
-                p.requires_grad_(False)
-            self.lambdas = [1.0, 0.0, 0.0]
+        # if epoch < total_epochs // 2: # fix classifier; train encoder and decoder
+        #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
+        #                              self.layer4.parameters(), self.fc.parameters()):
+        #         p.requires_grad_(False)
+        #     self.reset_lmb_()
+        #     self.lambdas[0] = 0.0
+        # else: # fix encoder and decoder
+        #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
+        #                              self.layer4.parameters(), self.fc.parameters()):
+        #         p.requires_grad_(True)
+        #     for p in self.bottleneck_layer.encoder.parameters():
+        #         p.requires_grad_(False)
+        #     for p in self.bottleneck_layer.entropy_bottleneck.parameters():
+        #         p.requires_grad_(False)
+        #     self.lambdas = [1.0, 0.0, 0.0]
+        factor = get_cosine_lrf(epoch, lrf_min=0.0, T=total_epochs-1)
+        self.lambdas[1] = float(factor)
         if verbose:
             print(f'Epoch={epoch}/{total_epochs}, lambdas (cls, transfer, bppix)={self.lambdas}')
 
