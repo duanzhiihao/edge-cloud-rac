@@ -70,6 +70,7 @@ class BottleneckResNet(nn.Module):
         self.initial_bpp_lmb = float(bpp_lmb)
         self.initial_trs_lmb = 1.0
         self.initial_cls_lmb = 1.0
+        self.reset_lmb_()
 
     def reset_lmb_(self):
         self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
