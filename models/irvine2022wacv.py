@@ -47,7 +47,7 @@ class BottleneckResNetLayerWithIGDN(CompressionModel):
 
 
 class BottleneckResNet(nn.Module):
-    def __init__(self, zdim=24, num_classes=1000, bpp_lmb=0.02, teacher=True):
+    def __init__(self, zdim=24, num_classes=1000, bpp_lmb=0.02, teacher=True, mode='joint'):
         super().__init__()
         self.bottleneck_layer = BottleneckResNetLayerWithIGDN(zdim, 256)
 
@@ -68,33 +68,49 @@ class BottleneckResNet(nn.Module):
             self._teacher = None
 
         self.initial_bpp_lmb = float(bpp_lmb)
-        self.initial_trs_lmb = 1.0
-        self.initial_cls_lmb = 1.0
-        self.reset_lmb_()
+        # self.initial_trs_lmb = 1.0
+        # self.initial_cls_lmb = 1.0
+        # self.reset_lmb_()
 
-    def reset_lmb_(self):
-        self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
+        if mode == 'encoder':
+            for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
+                                     self.layer4.parameters(), self.fc.parameters()):
+                p.requires_grad_(False)
+            self.lambdas = [0.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
+        elif mode == 'classifier':
+            for p in self.bottleneck_layer.encoder.parameters():
+                p.requires_grad_(False)
+            for p in self.bottleneck_layer.entropy_bottleneck.parameters():
+                p.requires_grad_(False)
+            self.lambdas = [1.0, 0.0, 0.0] # cls, trs, bpp
+        elif mode == 'joint':
+            self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
+        else:
+            raise ValueError()
 
-    def set_epoch(self, epoch, total_epochs, verbose=True):
-        # if epoch < total_epochs // 2: # fix classifier; train encoder and decoder
-        #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
-        #                              self.layer4.parameters(), self.fc.parameters()):
-        #         p.requires_grad_(False)
-        #     self.reset_lmb_()
-        #     self.lambdas[0] = 0.0
-        # else: # fix encoder and decoder
-        #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
-        #                              self.layer4.parameters(), self.fc.parameters()):
-        #         p.requires_grad_(True)
-        #     for p in self.bottleneck_layer.encoder.parameters():
-        #         p.requires_grad_(False)
-        #     for p in self.bottleneck_layer.entropy_bottleneck.parameters():
-        #         p.requires_grad_(False)
-        #     self.lambdas = [1.0, 0.0, 0.0]
-        factor = get_cosine_lrf(epoch, lrf_min=0.0, T=total_epochs-1)
-        self.lambdas[1] = float(factor)
-        if verbose:
-            print(f'Epoch={epoch}/{total_epochs}, lambdas (cls, transfer, bppix)={self.lambdas}')
+    # def reset_lmb_(self):
+    #     self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
+
+    # def set_epoch(self, epoch, total_epochs, verbose=True):
+    #     # if epoch < total_epochs // 2: # fix classifier; train encoder and decoder
+    #     #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
+    #     #                              self.layer4.parameters(), self.fc.parameters()):
+    #     #         p.requires_grad_(False)
+    #     #     self.reset_lmb_()
+    #     #     self.lambdas[0] = 0.0
+    #     # else: # fix encoder and decoder
+    #     #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
+    #     #                              self.layer4.parameters(), self.fc.parameters()):
+    #     #         p.requires_grad_(True)
+    #     #     for p in self.bottleneck_layer.encoder.parameters():
+    #     #         p.requires_grad_(False)
+    #     #     for p in self.bottleneck_layer.entropy_bottleneck.parameters():
+    #     #         p.requires_grad_(False)
+    #     #     self.lambdas = [1.0, 0.0, 0.0]
+    #     factor = get_cosine_lrf(epoch, lrf_min=0.0, T=total_epochs-1)
+    #     self.lambdas[1] = float(factor)
+    #     if verbose:
+    #         print(f'Epoch={epoch}/{total_epochs}, lambdas (cls, transfer, bppix)={self.lambdas}')
 
     def forward(self, x, y):
         nB, _, imH, imW = x.shape
@@ -106,28 +122,33 @@ class BottleneckResNet(nn.Module):
         feature = torch.flatten(feature, 1)
         logits_hat = self.fc(feature)
 
+        probs_teach, features_teach = self.forward_teacher(x)
+
         # bit rate loss
         bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
         # label prediction loss
-        l_cls = tnf.cross_entropy(logits_hat, y, reduction='mean')
+        l_ce = tnf.cross_entropy(logits_hat, y, reduction='mean')
+        
+        l_kd = tnf.kl_div(input=torch.log_softmax(logits_hat, dim=1),
+                          target=probs_teach, reduction='batchmean')
         # transfer loss
         lmb_cls, lmb_trs, lmb_bpp = self.lambdas
         if lmb_trs > 0:
-            logits_teach, features_teach = self.forward_teacher(x)
             l_trs = self.transfer_loss([x1, x2, x3, x4], features_teach)
         else:
             l_trs = [torch.zeros(1, device=x.device) for _ in range(4)]
-        loss = lmb_cls * l_cls + lmb_trs * sum(l_trs) + lmb_bpp * bppix
+        loss = lmb_cls * (0.5*l_ce + 0.5*l_kd) + lmb_trs * sum(l_trs) + lmb_bpp * bppix
 
         stats = OrderedDict()
         stats['loss'] = loss
         stats['bppix'] = bppix.item()
-        stats['l_cls'] = l_cls.item()
+        stats['CE'] = l_ce.item()
+        stats['KD'] = l_kd.item()
         for i, lt in enumerate(l_trs):
             stats[f'trs_{i}'] = lt.item()
         stats['acc'] = (torch.argmax(logits_hat, dim=1) == y).sum().item() / float(nB)
         if lmb_trs > 0:
-            stats['t_acc'] = (torch.argmax(logits_teach, dim=1) == y).sum().item() / float(nB)
+            stats['t_acc'] = (torch.argmax(probs_teach, dim=1) == y).sum().item() / float(nB)
         else:
             stats['t_acc'] = -1.0
         return stats
@@ -137,6 +158,8 @@ class BottleneckResNet(nn.Module):
         y_teach = self._teacher(x)
         t1, t2, t3, t4 = self._teacher.cache
         assert all([(not t.requires_grad) for t in (t1, t2, t3, t4)])
+        assert y_teach.dim() == 2
+        y_teach = torch.softmax(y_teach, dim=1)
         return y_teach, (t1, t2, t3, t4)
 
     def transfer_loss(self, student_features, teacher_features):
