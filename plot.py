@@ -74,6 +74,18 @@ def plot_mobilecloud():
     }
     plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl.)')
 
+    wacv2022 = {
+        'acc': [73.06],
+        'bpp': [0.7058]
+    }
+    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. 2-stage)')
+
+    wacv2022 = {
+        'acc': [74.41],
+        'bpp': [0.7497]
+    }
+    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. cosine decay)')
+
     # wacv2022 = {
     #     'acc': [76.21],
     #     'bpp': [3.267]

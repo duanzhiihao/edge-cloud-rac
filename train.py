@@ -230,6 +230,8 @@ class TrainWrapper():
         # optimizer
         if cfg.optimizer == 'sgd':
             optimizer = torch.optim.SGD(parameters, lr=cfg.lr, momentum=cfg.momentum)
+        elif cfg.optimizer == 'adam':
+            optimizer = torch.optim.Adam(parameters, lr=cfg.lr)
         elif cfg.optimizer == 'adamw':
             optimizer = torch.optim.AdamW(parameters, lr=cfg.lr)
         else:
@@ -419,10 +421,10 @@ class TrainWrapper():
         if cfg.lr_sched == 'threestep':
             lrf = lr_schedulers.threestep(epoch, cfg.epochs)
         elif cfg.lr_sched == 'cosine':
-            lrf = lr_schedulers.get_cosine_lrf(epoch, 1e-4, cfg.epochs-1)
+            lrf = lr_schedulers.get_cosine_lrf(epoch, 1e-3, cfg.epochs-1)
         elif cfg.lr_sched == 'warmup_cosine':
             assert cfg.lr_warmup > 0, f'cfg.lr_warmup = {cfg.lr_warmup}'
-            lrf = lr_schedulers.get_warmup_cosine_lrf(epoch, 1e-4, cfg.lr_warmup, cfg.epochs-1)
+            lrf = lr_schedulers.get_warmup_cosine_lrf(epoch, 1e-3, cfg.lr_warmup, cfg.epochs-1)
         else:
             raise NotImplementedError()
 
