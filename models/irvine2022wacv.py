@@ -206,6 +206,6 @@ class BottleneckResNet(nn.Module):
 
 
 @register_model
-def irvine2022wacv(num_classes=1000, bpp_lmb=1.28, teacher=True):
-    model = BottleneckResNet(zdim=24, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher)
+def irvine2022wacv(num_classes=1000, bpp_lmb=1.28, teacher=True, mode='joint'):
+    model = BottleneckResNet(24, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher, mode=mode)
     return model
