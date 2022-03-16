@@ -421,10 +421,10 @@ class TrainWrapper():
         if cfg.lr_sched == 'twostep':
             lrf = lr_schedulers.twostep(epoch, cfg.epochs)
         elif cfg.lr_sched == 'cosine':
-            lrf = lr_schedulers.get_cosine_lrf(epoch, 1e-3, cfg.epochs-1)
+            lrf = lr_schedulers.get_cosine_lrf(epoch, 0.01, cfg.epochs-1)
         elif cfg.lr_sched == 'warmup_cosine':
             assert cfg.lr_warmup > 0, f'cfg.lr_warmup = {cfg.lr_warmup}'
-            lrf = lr_schedulers.get_warmup_cosine_lrf(epoch, 1e-3, cfg.lr_warmup, cfg.epochs-1)
+            lrf = lr_schedulers.get_warmup_cosine_lrf(epoch, 0.01, cfg.lr_warmup, cfg.epochs-1)
         else:
             raise NotImplementedError()
 
