@@ -9,6 +9,8 @@ from compressai.models.google import CompressionModel
 
 from models.registry import register_model
 from mycv.utils.lr_schedulers import get_cosine_lrf
+from mycv.utils.coding import get_object_size
+
 
 
 class BottleneckResNetLayerWithIGDN(CompressionModel):
@@ -44,6 +46,19 @@ class BottleneckResNetLayerWithIGDN(CompressionModel):
             return z_quantized, z_probs
         x_hat = self.decoder(z_quantized)
         return x_hat, z_probs
+
+    @torch.no_grad()
+    def compress(self, x):
+        z = self.encoder(x)
+        compressed_z = self.entropy_bottleneck.compress(z)
+        return compressed_z, z.shape[2:]
+
+    @torch.no_grad()
+    def decompress(self, compressed_obj):
+        bitstreams, latent_shape = compressed_obj
+        z_quantized = self.entropy_bottleneck.decompress(bitstreams, latent_shape)
+        feature = self.decoder(z_quantized)
+        return feature
 
 
 class BottleneckResNet(nn.Module):
@@ -87,6 +102,12 @@ class BottleneckResNet(nn.Module):
             self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
         else:
             raise ValueError()
+
+        self.compress_mode = False
+
+    def compress_mode_(self):
+        self.bottleneck_layer.update(force=True)
+        self.compress_mode = True
 
     # def reset_lmb_(self):
     #     self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
@@ -177,7 +198,12 @@ class BottleneckResNet(nn.Module):
     @torch.no_grad()
     def self_evaluate(self, x, y):
         nB, _, imH, imW = x.shape
-        x1, p_z = self.bottleneck_layer(x)
+        if self.compress_mode:
+            compressed_obj = self.bottleneck_layer.compress(x)
+            num_bits = get_object_size(compressed_obj)
+            x1 = self.bottleneck_layer.decompress(compressed_obj)
+        else:
+            x1, p_z = self.bottleneck_layer(x)
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
@@ -192,8 +218,11 @@ class BottleneckResNet(nn.Module):
         stats = OrderedDict()
         stats['top1'] = correct5[:, 0].float().mean().item()
         stats['top5'] = correct5.any(dim=1).float().mean().item()
-        bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
-        stats['bppix'] = bppix.item()
+        if self.compress_mode:
+            bppix = num_bits / float(nB * imH * imW)
+        else:
+            bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
+        stats['bppix'] = bppix
         stats['loss'] = float(l_cls + self.initial_bpp_lmb * bppix)
         return stats
 
