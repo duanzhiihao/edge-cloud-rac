@@ -418,8 +418,8 @@ class TrainWrapper():
     def adjust_lr_(self, epoch):
         cfg = self.cfg
 
-        if cfg.lr_sched == 'threestep':
-            lrf = lr_schedulers.threestep(epoch, cfg.epochs)
+        if cfg.lr_sched == 'twostep':
+            lrf = lr_schedulers.twostep(epoch, cfg.epochs)
         elif cfg.lr_sched == 'cosine':
             lrf = lr_schedulers.get_cosine_lrf(epoch, 1e-3, cfg.epochs-1)
         elif cfg.lr_sched == 'warmup_cosine':
