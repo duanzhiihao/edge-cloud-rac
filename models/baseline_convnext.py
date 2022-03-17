@@ -33,10 +33,10 @@ class CustomConvBottleneck(CompressionModel):
         self.decoder = None
         self._flops_mode = True
 
+    @torch.autocast('cuda', enabled=False)
     def encode(self, x):
         z = self.encoder(x)
-        with torch.autocast('cuda', enabled=False):
-            z_quantized, z_probs = self.entropy_bottleneck(z)
+        z_quantized, z_probs = self.entropy_bottleneck(z)
         return z_quantized, z_probs
 
     def forward(self, x):

@@ -8,7 +8,8 @@ def main():
     # model = BottleneckResNetLayerWithIGDN(num_enc_channels=24, _flops_mode=True)
     # model = BottleneckEncoder(num_enc_channels=24, _flops_mode=True)
     from models.irvine_plus import plus_v1, plus_convnext
-    model = plus_convnext().bottleneck_layer
+    from models.baseline_convnext import baseline_convnext
+    model = baseline_convnext().bottleneck_layer
     model.flops_mode_()
 
     model.eval()

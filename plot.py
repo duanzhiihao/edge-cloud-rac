@@ -1,3 +1,4 @@
+from matplotlib.ticker import ScalarFormatter
 import matplotlib.pyplot as plt
 
 
@@ -17,7 +18,9 @@ def plot(x, y, label, ls='-', ax=None):
 
 
 def plot_mobilecloud():
-    plt.figure(figsize=(7,6))
+    # plt.figure(figsize=(7,6))
+    fig1, ax1 = plt.subplots(figsize=(7,6))
+
     jpeg_mobilev3 = {
         'acc': [0.6623, 0.711, 0.7325, 0.7385, 0.7409],
         'bpp': [0.22366, 0.31079, 0.46838, 0.60333, 0.66786]
@@ -32,7 +35,7 @@ def plot_mobilecloud():
     }
     # plot(factorized['bpp'], factorized['acc'], label='MobileNetV3-L + Factorized entropy model')
 
-    plt.plot([0.0, 3.0], [76.15, 76.15], label='ResNet-50, Original',
+    ax1.plot([0.0, 3.0], [76.15, 76.15], label='ResNet-50, Original',
              marker='', linestyle='--', linewidth=1.6, color='gray')
 
     jpeg_res50 = {
@@ -68,9 +71,20 @@ def plot_mobilecloud():
     wacv2022_code['acc'] = [f*100 for f in wacv2022_code['acc']]
     plot(wacv2022_code['bpp'], wacv2022_code['acc'], label='Baseline (Irvine 2022 WACV)')
 
+    wacv2022_compression = {
+        'top1': [57.37, 71.608, 74.226, 75.096, 75.314, 75.632, 75.928, 75.916],
+        'top5': [80.74, 90.554, 91.902, 92.4, 92.584, 92.68, 92.862, 92.864],
+        'bpp': [0.148989, 0.333202, 0.598442, 0.889434, 1.314741, 1.834876, 2.595726, 3.657453],
+    }
+    # plot(wacv2022_compression['bpp'], wacv2022_compression['top1'], label='Baseline (practice)')
+
+    # wacv2022 = {
+    #     'acc': [71.42, 73.36, 74.66, 74.75],
+    #     'bpp': [0.3237, 0.5818, 0.8305, 0.8353]
+    # }
     wacv2022 = {
-        'acc': [71.42, 73.25, 74.66],
-        'bpp': [0.3237, 0.5742, 0.8305]
+        'acc': [70.9, 72.6, 73.27, 74.75, 76.21],
+        'bpp': [0.2761, 0.4072, 0.58, 0.8367, 3.267]
     }
     plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl.)')
 
@@ -78,13 +92,13 @@ def plot_mobilecloud():
         'acc': [73.06],
         'bpp': [0.7058]
     }
-    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. 2-stage)')
+    # plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. 2-stage)')
 
     wacv2022 = {
         'acc': [74.41],
         'bpp': [0.7497]
     }
-    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. cosine decay)')
+    # plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl. cosine decay)')
 
     # wacv2022 = {
     #     'acc': [76.21],
@@ -102,7 +116,7 @@ def plot_mobilecloud():
         'acc': [73.28, 75.22],
         'bpp': [0.5347, 0.97605]
     }
-    plot(ours['bpp'], ours['acc'], label='Baseline w/ mobilenet encoder')
+    # plot(ours['bpp'], ours['acc'], label='Baseline w/ mobilenet encoder')
 
     ours = {
         'acc': [75.6],
@@ -115,8 +129,9 @@ def plot_mobilecloud():
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     plt.xscale('log')
-    plt.xlim(0.1, 2.0)
-    # plt.xticks([i/10.0 for i in range(1,20)])
+    plt.xlim(0.14, 2.0)
+    plt.xticks([0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8])
+    ax1.get_xaxis().set_major_formatter(ScalarFormatter())
     # plt.yticks(list(range()))
     # plt.ylim(22, 42)
     plt.ylabel('Top-1 acc.', fontdict=default_font)
