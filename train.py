@@ -31,7 +31,7 @@ def get_config():
     parser.add_argument('--wbgroup',    type=str,  default='irvine')
     parser.add_argument('--wbmode',     type=str,  default='disabled')
     # model setting
-    parser.add_argument('--model',      type=str,  default='irvine2022wacv')
+    parser.add_argument('--model',      type=str,  default='baseline_convnext')
     parser.add_argument('--model_args', type=str,  default='')
     # resume setting
     parser.add_argument('--resume',     type=str,  default='')
@@ -47,7 +47,7 @@ def get_config():
     parser.add_argument('--batch_size', type=int,  default=24)
     parser.add_argument('--accum_num',  type=int,  default=1)
     parser.add_argument('--optimizer',  type=str,  default='sgd')
-    parser.add_argument('--lr',         type=float,default=0.001)
+    parser.add_argument('--lr',         type=float,default=0.01)
     parser.add_argument('--lr_sched',   type=str,  default='cosine')
     parser.add_argument('--wdecay',     type=float,default=0.0001)
     # training policy setting
