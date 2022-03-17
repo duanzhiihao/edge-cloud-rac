@@ -8,7 +8,6 @@ import time
 from tqdm import tqdm
 from collections import defaultdict
 import torch
-import torch.nn.functional as tnf
 import torch.cuda.amp as amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -59,7 +58,7 @@ def get_config():
     parser.add_argument('--eval_first', action=argparse.BooleanOptionalAction, default=True)
     # device setting
     parser.add_argument('--fixseed',    action='store_true')
-    parser.add_argument('--device',     type=int,  default=[0], nargs='+')
+    # parser.add_argument('--device',     type=int,  default=[0], nargs='+')
     parser.add_argument('--workers',    type=int,  default=0)
     cfg = parser.parse_args()
 
@@ -69,9 +68,6 @@ def get_config():
     cfg.momentum = 0.9
     # EMA
     cfg.ema_warmup_epochs = max(round(cfg.epochs / 20), 1)
-
-    # visible device setting
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(cfg.device)[1:-1]
     return cfg
 
 
@@ -84,30 +80,23 @@ class TrainWrapper():
 
         local_rank = int(os.environ.get('LOCAL_RANK', -1))
         world_size = int(os.environ.get('WORLD_SIZE', 1))
+        _count = torch.cuda.device_count()
 
         if world_size == 1: # standard mode
             assert local_rank == -1
-            if len(cfg.device) == 0: # single GPU mode
-                pass
-            elif len(cfg.device) > 1: # DP mode
-                print(ANSI.warningstr(f'Will use DP mode on devices {cfg.device}...'))
-
-            for i, _id in enumerate(cfg.device):
-                print(f'Using device idx={i}, id={_id}:', torch.cuda.get_device_properties(i), '\n')
+            print(f'Visible devices={_count}, using idx 0:', torch.cuda.get_device_properties(0), '\n')
             device = torch.device('cuda', 0)
             is_main = True
             distributed = False
         else: # DDP mode
             assert local_rank >= 0
-            msg = f'count {torch.cuda.device_count()}, devices {cfg.device} world size {world_size}'
-            assert torch.cuda.device_count() == len(cfg.device) == world_size, f'{msg}'
             assert torch.distributed.is_nccl_available()
             torch.distributed.init_process_group(backend="nccl")
             assert local_rank == torch.distributed.get_rank()
             assert world_size == torch.distributed.get_world_size()
 
             with mytu.torch_distributed_sequentially():
-                print(f'local_rank={local_rank}, world_size={world_size}, devices {cfg.device}')
+                print(f'local_rank={local_rank}, world_size={world_size}, total_visible={_count}')
                 print(torch.cuda.get_device_properties(local_rank), '\n')
             torch.distributed.barrier()
             device = torch.device('cuda', local_rank)
@@ -119,9 +108,7 @@ class TrainWrapper():
         torch.backends.cudnn.benchmark = True
 
         if is_main:
-            print(f'Batch size on each dataloader = {cfg.batch_size}')
-            bs_per_gpu = cfg.batch_size * world_size / len(cfg.device)
-            print(f'Batch size on each GPU = {bs_per_gpu}')
+            print(f'Batch size on each dataloader (ie, GPU) = {cfg.batch_size}')
             print(f'Gradient accmulation: {cfg.accum_num} backwards() -> one step()')
             bs_effective = cfg.batch_size * world_size * cfg.accum_num
             msg = f'Effective batch size = {bs_effective}, learning rate = {cfg.lr}, ' + \
@@ -131,10 +118,9 @@ class TrainWrapper():
             print(f'Learning rate per 1024 images = {lr_per_1024img}')
             wd_per_1024img = cfg.wdecay / bs_effective * 1024
             print(f'Weight decay per 1024 images = {wd_per_1024img}', '\n')
-            self.cfg.bs_per_gpu   = bs_per_gpu
-            self.cfg.bs_effective = bs_effective
+            cfg.bs_effective = bs_effective
 
-        self.cfg.world_size = world_size
+        cfg.world_size   = world_size
         self.device      = device
         self.local_rank  = local_rank
         self.is_main     = is_main
@@ -193,10 +179,6 @@ class TrainWrapper():
         if self.distributed: # DDP mode
             self.model = DDP(model, device_ids=[self.local_rank], output_device=self.local_rank,
                              find_unused_parameters=True)
-        elif len(cfg.device) > 1: # DP mode
-            raise DeprecationWarning()
-            print(f'DP mode on GPUs {cfg.device}', '\n')
-            self.model = torch.nn.DataParallel(model, device_ids=cfg.device)
 
     def set_optimizer_(self):
         cfg, model = self.cfg, self.model

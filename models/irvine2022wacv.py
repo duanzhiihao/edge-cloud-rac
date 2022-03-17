@@ -149,7 +149,7 @@ class BottleneckResNet(nn.Module):
         bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
         # label prediction loss
         l_ce = tnf.cross_entropy(logits_hat, y, reduction='mean')
-        
+
         l_kd = tnf.kl_div(input=torch.log_softmax(logits_hat, dim=1),
                           target=probs_teach, reduction='batchmean')
         # transfer loss
