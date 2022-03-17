@@ -13,7 +13,7 @@ from mycv.utils.coding import get_object_size
 
 
 class CustomConvBottleneck(CompressionModel):
-    def __init__(self, zdim=24, outdim=64, _flops_mode=False):
+    def __init__(self, zdim=24, outdim=64):
         super().__init__(entropy_bottleneck_channels=zdim)
 
         hidden = 64
@@ -27,14 +27,16 @@ class CustomConvBottleneck(CompressionModel):
         self.decoder = nn.Sequential(
             nn.Conv2d(zdim, outdim, kernel_size=1, stride=1, padding=0),
         )
-        if _flops_mode:
-            self.decoder = None
-        self._flops_mode = _flops_mode
+        self._flops_mode = False
 
-    @torch.autocast('cuda', enabled=False)
+    def flops_mode_(self):
+        self.decoder = None
+        self._flops_mode = True
+
     def encode(self, x):
         z = self.encoder(x)
-        z_quantized, z_probs = self.entropy_bottleneck(z)
+        with torch.autocast('cuda', enabled=False):
+            z_quantized, z_probs = self.entropy_bottleneck(z)
         return z_quantized, z_probs
 
     def forward(self, x):
