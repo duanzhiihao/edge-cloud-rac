@@ -82,16 +82,13 @@ class BottleneckResNet(nn.Module):
         else:
             self._teacher = None
 
-        self.initial_bpp_lmb = float(bpp_lmb)
-        # self.initial_trs_lmb = 1.0
-        # self.initial_cls_lmb = 1.0
-        # self.reset_lmb_()
+        self.bpp_lmb = float(bpp_lmb)
 
         if mode == 'encoder':
             for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
                                      self.layer4.parameters(), self.fc.parameters()):
                 p.requires_grad_(False)
-            self.lambdas = [0.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
+            self.lambdas = [0.0, 1.0, self.bpp_lmb] # cls, trs, bpp
         elif mode == 'classifier':
             for p in self.bottleneck_layer.encoder.parameters():
                 p.requires_grad_(False)
@@ -99,7 +96,7 @@ class BottleneckResNet(nn.Module):
                 p.requires_grad_(False)
             self.lambdas = [1.0, 0.0, 0.0] # cls, trs, bpp
         elif mode == 'joint':
-            self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
+            self.lambdas = [1.0, 1.0, self.bpp_lmb] # cls, trs, bpp
         else:
             raise ValueError()
 
@@ -108,30 +105,6 @@ class BottleneckResNet(nn.Module):
     def compress_mode_(self):
         self.bottleneck_layer.update(force=True)
         self.compress_mode = True
-
-    # def reset_lmb_(self):
-    #     self.lambdas = [1.0, 1.0, self.initial_bpp_lmb] # cls, trs, bpp
-
-    # def set_epoch(self, epoch, total_epochs, verbose=True):
-    #     # if epoch < total_epochs // 2: # fix classifier; train encoder and decoder
-    #     #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
-    #     #                              self.layer4.parameters(), self.fc.parameters()):
-    #     #         p.requires_grad_(False)
-    #     #     self.reset_lmb_()
-    #     #     self.lambdas[0] = 0.0
-    #     # else: # fix encoder and decoder
-    #     #     for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
-    #     #                              self.layer4.parameters(), self.fc.parameters()):
-    #     #         p.requires_grad_(True)
-    #     #     for p in self.bottleneck_layer.encoder.parameters():
-    #     #         p.requires_grad_(False)
-    #     #     for p in self.bottleneck_layer.entropy_bottleneck.parameters():
-    #     #         p.requires_grad_(False)
-    #     #     self.lambdas = [1.0, 0.0, 0.0]
-    #     factor = get_cosine_lrf(epoch, lrf_min=0.0, T=total_epochs-1)
-    #     self.lambdas[1] = float(factor)
-    #     if verbose:
-    #         print(f'Epoch={epoch}/{total_epochs}, lambdas (cls, transfer, bppix)={self.lambdas}')
 
     def forward(self, x, y):
         nB, _, imH, imW = x.shape
@@ -223,7 +196,7 @@ class BottleneckResNet(nn.Module):
         else:
             bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
         stats['bppix'] = bppix
-        stats['loss'] = float(l_cls + self.initial_bpp_lmb * bppix)
+        stats['loss'] = float(l_cls + self.bpp_lmb * bppix)
         return stats
 
     def state_dict(self):
