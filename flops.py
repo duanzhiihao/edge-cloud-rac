@@ -1,15 +1,12 @@
 import torch
+import torch.nn as nn
 from mycv.utils.torch_utils import flops_benchmark, speed_benchmark
 from models.registry import get_model
 
 
 def main():
-    # from models.irvine2022wacv import BottleneckResNetLayerWithIGDN
-    # model = BottleneckResNetLayerWithIGDN(num_enc_channels=24, _flops_mode=True)
-    # model = BottleneckEncoder(num_enc_channels=24, _flops_mode=True)
-    from models.irvine_plus import plus_v1, plus_convnext
-    from models.baseline_convnext import baseline_convnext
-    model = baseline_convnext().bottleneck_layer
+    model = get_model('irvine2022wacv')().bottleneck_layer
+    # model = get_model('baseline_vq8')(num_codes=1024).bottleneck_layer
     model.flops_mode_()
 
     model.eval()

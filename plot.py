@@ -78,13 +78,14 @@ def plot_mobilecloud():
     }
     # plot(wacv2022_compression['bpp'], wacv2022_compression['top1'], label='Baseline (practice)')
 
-    # wacv2022 = {
-    #     'acc': [71.42, 73.36, 74.66, 74.75],
-    #     'bpp': [0.3237, 0.5818, 0.8305, 0.8353]
-    # }
     wacv2022 = {
-        'acc': [70.9, 72.6, 73.27, 74.75, 76.21],
-        'bpp': [0.2761, 0.4072, 0.58, 0.8367, 3.267]
+        'acc': [71.42, 73.36, 74.66],
+        'bpp': [0.3237, 0.5818, 0.8305]
+    }
+    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl., last week)')
+    wacv2022 = {
+        'acc': [68.02, 70.9, 72.6, 74.03, 74.75, 76.21],
+        'bpp': [0.2309, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
     }
     plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl.)')
 
@@ -119,10 +120,10 @@ def plot_mobilecloud():
     # plot(ours['bpp'], ours['acc'], label='Baseline w/ mobilenet encoder')
 
     ours = {
-        'acc': [75.6],
-        'bpp': [1.456]
+        'acc': [72.74, 75.6],
+        'bpp': [0.6789, 1.456]
     }
-    plot(ours['bpp'], ours['acc'], label='Baseline w/ convnext encoder')
+    # plot(ours['bpp'], ours['acc'], label='Baseline w/ convnext encoder')
 
     plt.title('Rate-accuracy trade-off on ImageNet')
     plt.grid(True, alpha=0.32)

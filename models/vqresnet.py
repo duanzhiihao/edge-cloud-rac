@@ -6,34 +6,44 @@ import torch.nn.functional as tnf
 from models.registry import register_model
 
 
-class BottleneckVQa(nn.Module):
-    def __init__(self, num_enc_channels=64, num_target_channels=256, _flops_mode=False):
+def deconv(in_channels, out_channels, kernel_size=5, stride=2):
+    return nn.ConvTranspose2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        output_padding=stride - 1,
+        padding=kernel_size // 2,
+    )
+
+class BottleneckVQ8(nn.Module):
+    def __init__(self, num_enc_channels, num_codes, num_target_channels=256):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=False),
-            # GDN1(num_enc_channels),
+            nn.Conv2d(3, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
             nn.GELU(),
-            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=False),
-            # GDN1(num_enc_channels),
+            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
             nn.GELU(),
-            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=2, stride=1, padding=0, bias=False)
+            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=3, stride=1, padding=1, bias=True)
         )
         self.decoder = nn.Sequential(
-            nn.Conv2d(num_enc_channels, num_target_channels * 2, kernel_size=2, stride=1, padding=1, bias=False),
+            deconv(num_enc_channels, num_target_channels),
             nn.GELU(),
-            # GDN1(num_target_channels * 2, inverse=True),
-            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=2, stride=1, padding=0, bias=False),
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=2, stride=1, padding=1, bias=True),
             nn.GELU(),
-            # GDN1(num_target_channels, inverse=True),
-            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=False)
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=2, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=True)
         )
         from mycv.models.vae.vqvae.myvqvae import MyCodebookEMA
-        num_codes = 24
         self.codebook = MyCodebookEMA(num_codes, embedding_dim=num_enc_channels, commitment_cost=0.25)
-        self.updated = False
-        if _flops_mode:
-            self.decoder = None
-        self._flops_mode = _flops_mode
+        self._flops_mode = False
+
+    def flops_mode_(self):
+        self.decoder = None
+        self._flops_mode = True
 
     @torch.autocast('cuda', enabled=False)
     def forward_entropy(self, z):
@@ -53,6 +63,141 @@ class BottleneckVQa(nn.Module):
             return dummy
         x_hat = self.decoder(z_hat)
         return x_hat, z_probs, vq_loss
+
+
+class VQBottleneckResNet(nn.Module):
+    def __init__(self, zdim=64, num_codes=256, num_classes=1000, teacher=True):
+        super().__init__()
+        self.bottleneck_layer = BottleneckVQ8(zdim, num_codes, num_target_channels=256)
+
+        from torchvision.models.resnet import resnet50
+        resnet_model = resnet50(pretrained=True, num_classes=num_classes)
+        self.layer2 = resnet_model.layer2
+        self.layer3 = resnet_model.layer3
+        self.layer4 = resnet_model.layer4
+        self.avgpool = resnet_model.avgpool
+        self.fc = resnet_model.fc
+
+        if teacher:
+            from models.teachers import ResNetTeacher
+            self._teacher = ResNetTeacher(source='torchvision')
+            for p in self._teacher.parameters():
+                p.requires_grad_(False)
+        else:
+            self._teacher = None
+
+        self.bpp_lmb = float(bpp_lmb)
+        self.lambdas = [1.0, 1.0, self.bpp_lmb] # cls, trs, bpp
+        self.compress_mode = False
+
+    def compress_mode_(self):
+        self.bottleneck_layer.update(force=True)
+        self.compress_mode = True
+
+    def forward(self, x, y):
+        nB, _, imH, imW = x.shape
+        x1, p_z = self.bottleneck_layer(x)
+        x2 = self.layer2(x1)
+        x3 = self.layer3(x2)
+        x4 = self.layer4(x3)
+        feature = self.avgpool(x4)
+        feature = torch.flatten(feature, 1)
+        logits_hat = self.fc(feature)
+
+        probs_teach, features_teach = self.forward_teacher(x)
+
+        # bit rate loss
+        bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
+        # label prediction loss
+        l_ce = tnf.cross_entropy(logits_hat, y, reduction='mean')
+
+        l_kd = tnf.kl_div(input=torch.log_softmax(logits_hat, dim=1),
+                          target=probs_teach, reduction='batchmean')
+        # transfer loss
+        lmb_cls, lmb_trs, lmb_bpp = self.lambdas
+        if lmb_trs > 0:
+            l_trs = self.transfer_loss([x1, x2, x3, x4], features_teach)
+        else:
+            l_trs = [torch.zeros(1, device=x.device) for _ in range(4)]
+        loss = lmb_cls * (0.5*l_ce + 0.5*l_kd) + lmb_trs * sum(l_trs) + lmb_bpp * bppix
+
+        stats = OrderedDict()
+        stats['loss'] = loss
+        stats['bppix'] = bppix.item()
+        stats['CE'] = l_ce.item()
+        stats['KD'] = l_kd.item()
+        for i, lt in enumerate(l_trs):
+            stats[f'trs_{i}'] = lt.item()
+        stats['acc'] = (torch.argmax(logits_hat, dim=1) == y).sum().item() / float(nB)
+        if lmb_trs > 0:
+            stats['t_acc'] = (torch.argmax(probs_teach, dim=1) == y).sum().item() / float(nB)
+        else:
+            stats['t_acc'] = -1.0
+        return stats
+
+    @torch.no_grad()
+    def forward_teacher(self, x):
+        y_teach = self._teacher(x)
+        t1, t2, t3, t4 = self._teacher.cache
+        assert all([(not t.requires_grad) for t in (t1, t2, t3, t4)])
+        assert y_teach.dim() == 2
+        y_teach = torch.softmax(y_teach, dim=1)
+        return y_teach, (t1, t2, t3, t4)
+
+    def transfer_loss(self, student_features, teacher_features):
+        losses = []
+        for fake, real in zip(student_features, teacher_features):
+            if (fake is not None) and (real is not None):
+                assert fake.shape == real.shape, f'fake{fake.shape}, real{real.shape}'
+                l_trs = tnf.mse_loss(fake, real, reduction='mean')
+                losses.append(l_trs)
+            else:
+                device = next(self.parameters()).device
+                losses.append(torch.zeros(1, device=device))
+        return losses
+
+    @torch.no_grad()
+    def self_evaluate(self, x, y):
+        nB, _, imH, imW = x.shape
+        if self.compress_mode:
+            compressed_obj = self.bottleneck_layer.compress(x)
+            num_bits = get_object_size(compressed_obj)
+            x1 = self.bottleneck_layer.decompress(compressed_obj)
+        else:
+            x1, p_z = self.bottleneck_layer(x)
+        x2 = self.layer2(x1)
+        x3 = self.layer3(x2)
+        x4 = self.layer4(x3)
+        feature = self.avgpool(x4)
+        feature = torch.flatten(feature, 1)
+        logits_hat = self.fc(feature)
+        l_cls = tnf.cross_entropy(logits_hat, y, reduction='mean')
+
+        _, top5_idx = torch.topk(logits_hat, k=5, dim=1, largest=True)
+        # compute top1 and top5 matches (true positives)
+        correct5 = torch.eq(y.cpu().view(nB, 1), top5_idx.cpu())
+        stats = OrderedDict()
+        stats['top1'] = correct5[:, 0].float().mean().item()
+        stats['top5'] = correct5.any(dim=1).float().mean().item()
+        if self.compress_mode:
+            bppix = num_bits / float(nB * imH * imW)
+        else:
+            bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
+        stats['bppix'] = bppix
+        stats['loss'] = float(l_cls + self.bpp_lmb * bppix)
+        return stats
+
+    def state_dict(self):
+        msd = super().state_dict()
+        for k in list(msd.keys()):
+            if '_teacher' in k:
+                msd.pop(k)
+        return msd
+
+@register_model
+def baseline_vq8(num_classes=1000, num_codes=256, teacher=True):
+    model = BottleneckResNet(zdim=24, num_codes=num_codes, num_classes=num_classes, teacher=teacher)
+    return model
 
 
 class VQResNet(nn.Module):

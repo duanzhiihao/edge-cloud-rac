@@ -14,7 +14,7 @@ from mycv.utils.coding import get_object_size
 
 
 class BottleneckResNetLayerWithIGDN(CompressionModel):
-    def __init__(self, num_enc_channels=24, num_target_channels=256, _flops_mode=False):
+    def __init__(self, num_enc_channels=24, num_target_channels=256):
         super().__init__(entropy_bottleneck_channels=num_enc_channels)
         self.encoder = nn.Sequential(
             nn.Conv2d(3, num_enc_channels * 4, kernel_size=5, stride=2, padding=2, bias=False),
@@ -30,9 +30,11 @@ class BottleneckResNetLayerWithIGDN(CompressionModel):
             GDN1(num_target_channels, inverse=True),
             nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=False)
         )
-        if _flops_mode:
-            self.decoder = None
-        self._flops_mode = _flops_mode
+        self._flops_mode = False
+
+    def flops_mode_(self):
+        self.decoder = None
+        self._flops_mode = True
 
     # @torch.autocast('cuda', enabled=False)
     def encode(self, x):
