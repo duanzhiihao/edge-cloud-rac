@@ -34,7 +34,7 @@ class BottleneckResNetLayerWithIGDN(CompressionModel):
             self.decoder = None
         self._flops_mode = _flops_mode
 
-    @torch.autocast('cuda', enabled=False)
+    # @torch.autocast('cuda', enabled=False)
     def encode(self, x):
         z = self.encoder(x)
         z_quantized, z_probs = self.entropy_bottleneck(z)
