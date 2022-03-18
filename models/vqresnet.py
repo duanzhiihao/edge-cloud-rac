@@ -46,22 +46,19 @@ class BottleneckVQ8(nn.Module):
         self._flops_mode = True
 
     @torch.autocast('cuda', enabled=False)
-    def forward_entropy(self, z):
+    def forward_codebook(self, z):
         z = z.float()
         vq_loss, z_quantized, code_indices = self.codebook.forward(z)
-        nB, nC, nH, nW = z.shape
         z_probs = self.codebook.get_probs(code_indices)
-        # z_hat, z_probs = self.entropy_bottleneck(z)
         return vq_loss, z_quantized, z_probs
 
     def forward(self, x):
         x = x.float()
         z = self.encoder(x)
-        vq_loss, z_hat, z_probs = self.forward_entropy(z)
+        vq_loss, z_quantized, z_probs = self.forward_codebook(z)
         if self._flops_mode:
-            dummy = z_hat.sum() + z_probs.sum()
-            return dummy
-        x_hat = self.decoder(z_hat)
+            return z_quantized, z_probs
+        x_hat = self.decoder(z_quantized)
         return x_hat, z_probs, vq_loss
 
 
@@ -86,8 +83,7 @@ class VQBottleneckResNet(nn.Module):
         else:
             self._teacher = None
 
-        self.bpp_lmb = float(bpp_lmb)
-        self.lambdas = [1.0, 1.0, self.bpp_lmb] # cls, trs, bpp
+        self.lambdas = [1.0, 1.0, 0.0] # cls, trs, bpp
         self.compress_mode = False
 
     def compress_mode_(self):
@@ -96,7 +92,7 @@ class VQBottleneckResNet(nn.Module):
 
     def forward(self, x, y):
         nB, _, imH, imW = x.shape
-        x1, p_z = self.bottleneck_layer(x)
+        x1, p_z, vq_loss = self.bottleneck_layer(x)
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
@@ -119,7 +115,7 @@ class VQBottleneckResNet(nn.Module):
             l_trs = self.transfer_loss([x1, x2, x3, x4], features_teach)
         else:
             l_trs = [torch.zeros(1, device=x.device) for _ in range(4)]
-        loss = lmb_cls * (0.5*l_ce + 0.5*l_kd) + lmb_trs * sum(l_trs) + lmb_bpp * bppix
+        loss = lmb_cls * (0.5*l_ce + 0.5*l_kd) + lmb_trs * sum(l_trs) + vq_loss
 
         stats = OrderedDict()
         stats['loss'] = loss
@@ -160,6 +156,7 @@ class VQBottleneckResNet(nn.Module):
     def self_evaluate(self, x, y):
         nB, _, imH, imW = x.shape
         if self.compress_mode:
+            raise NotImplementedError()
             compressed_obj = self.bottleneck_layer.compress(x)
             num_bits = get_object_size(compressed_obj)
             x1 = self.bottleneck_layer.decompress(compressed_obj)
@@ -180,6 +177,7 @@ class VQBottleneckResNet(nn.Module):
         stats['top1'] = correct5[:, 0].float().mean().item()
         stats['top5'] = correct5.any(dim=1).float().mean().item()
         if self.compress_mode:
+            raise NotImplementedError()
             bppix = num_bits / float(nB * imH * imW)
         else:
             bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
@@ -196,7 +194,7 @@ class VQBottleneckResNet(nn.Module):
 
 @register_model
 def baseline_vq8(num_classes=1000, num_codes=256, teacher=True):
-    model = BottleneckResNet(zdim=24, num_codes=num_codes, num_classes=num_classes, teacher=teacher)
+    model = VQBottleneckResNet(zdim=64, num_codes=num_codes, num_classes=num_classes, teacher=teacher)
     return model
 
 
