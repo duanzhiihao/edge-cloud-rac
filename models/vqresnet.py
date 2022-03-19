@@ -52,6 +52,7 @@ class BottleneckVQ8(nn.Module):
         z_probs = self.codebook.get_probs(code_indices)
         return vq_loss, z_quantized, z_probs
 
+    @torch.autocast('cuda', enabled=False)
     def forward(self, x):
         x = x.float()
         z = self.encoder(x)
