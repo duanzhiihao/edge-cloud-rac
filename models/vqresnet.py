@@ -16,17 +16,35 @@ def deconv(in_channels, out_channels, kernel_size=5, stride=2):
         padding=kernel_size // 2,
     )
 
+class ResBlock(nn.Module):
+    def __init__(self, in_out, hidden=None):
+        super().__init__()
+        hidden = hidden or (in_out // 2)
+        self.conv_1 = nn.Conv2d(in_out, hidden, kernel_size=3, padding=1)
+        self.conv_2 = nn.Conv2d(hidden, in_out, kernel_size=3, padding=1)
+
+    def forward(self, input):
+        x = self.conv_1(tnf.gelu(input))
+        x = self.conv_2(tnf.gelu(x))
+        out = input + x
+        return out
+
 class BottleneckVQ8(nn.Module):
     def __init__(self, num_enc_channels, num_codes, num_target_channels=256):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
-            nn.GELU(),
-            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
-            nn.GELU(),
-            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
-            nn.GELU(),
-            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=3, stride=1, padding=1, bias=True)
+            # nn.Conv2d(3, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
+            # nn.GELU(),
+            # nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
+            # nn.GELU(),
+            # nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
+            # nn.GELU(),
+            # nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=3, stride=1, padding=1, bias=True)
+            nn.Conv2d(3, num_enc_channels, kernel_size=8, stride=8, padding=0, bias=True),
+            ResBlock(num_enc_channels),
+            ResBlock(num_enc_channels),
+            ResBlock(num_enc_channels),
+            ResBlock(num_enc_channels),
         )
         self.decoder = nn.Sequential(
             deconv(num_enc_channels, num_target_channels),
@@ -38,7 +56,7 @@ class BottleneckVQ8(nn.Module):
             nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
         )
         from mycv.models.vae.vqvae.myvqvae import MyCodebookEMA
-        self.codebook = MyCodebookEMA(num_codes, embedding_dim=num_enc_channels, commitment_cost=0.25)
+        self.codebook = MyCodebookEMA(num_codes, embedding_dim=num_enc_channels, commitment_cost=0.1)
         self._flops_mode = False
 
     def flops_mode_(self):
@@ -52,7 +70,6 @@ class BottleneckVQ8(nn.Module):
         z_probs = self.codebook.get_probs(code_indices)
         return vq_loss, z_quantized, z_probs
 
-    @torch.autocast('cuda', enabled=False)
     def forward(self, x):
         x = x.float()
         z = self.encoder(x)
@@ -121,6 +138,7 @@ class VQBottleneckResNet(nn.Module):
         stats = OrderedDict()
         stats['loss'] = loss
         stats['bppix'] = bppix.item()
+        stats['VQ'] = vq_loss.item()
         stats['CE'] = l_ce.item()
         stats['KD'] = l_kd.item()
         for i, lt in enumerate(l_trs):
@@ -195,7 +213,7 @@ class VQBottleneckResNet(nn.Module):
 
 @register_model
 def baseline_vq8(num_classes=1000, num_codes=1024, teacher=True):
-    model = VQBottleneckResNet(zdim=64, num_codes=num_codes, num_classes=num_classes, teacher=teacher)
+    model = VQBottleneckResNet(zdim=96, num_codes=num_codes, num_classes=num_classes, teacher=teacher)
     return model
 
 

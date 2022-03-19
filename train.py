@@ -31,7 +31,7 @@ def get_config():
     parser.add_argument('--wbgroup',    type=str,  default='irvine')
     parser.add_argument('--wbmode',     type=str,  default='disabled')
     # model setting
-    parser.add_argument('--model',      type=str,  default='baseline_convnext')
+    parser.add_argument('--model',      type=str,  default='baseline_vq8')
     parser.add_argument('--model_args', type=str,  default='')
     # resume setting
     parser.add_argument('--resume',     type=str,  default='')
