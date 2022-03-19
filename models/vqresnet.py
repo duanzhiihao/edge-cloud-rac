@@ -31,11 +31,11 @@ class BottleneckVQ8(nn.Module):
         self.decoder = nn.Sequential(
             deconv(num_enc_channels, num_target_channels),
             nn.GELU(),
-            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=2, stride=1, padding=1, bias=True),
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
             nn.GELU(),
-            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=2, stride=1, padding=1, bias=True),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
             nn.GELU(),
-            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=True)
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=1, bias=True)
         )
         from mycv.models.vae.vqvae.myvqvae import MyCodebookEMA
         self.codebook = MyCodebookEMA(num_codes, embedding_dim=num_enc_channels, commitment_cost=0.25)
