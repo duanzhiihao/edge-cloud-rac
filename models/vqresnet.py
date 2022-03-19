@@ -16,6 +16,107 @@ def deconv(in_channels, out_channels, kernel_size=5, stride=2):
         padding=kernel_size // 2,
     )
 
+
+class MyCodebookEMA(nn.Module):
+    def __init__(self, num_embeddings, embedding_dim, commitment_cost, decay=0.99):
+        super().__init__()
+        self._num_embeddings = num_embeddings
+        self._embedding_dim = embedding_dim
+
+        self.register_buffer('codebook', torch.randn(num_embeddings, embedding_dim)/2)
+        self.register_buffer('_ema_cluster_size', torch.zeros(num_embeddings))
+        self.register_buffer('_ema_w', torch.randn(num_embeddings, embedding_dim))
+
+        self._commitment_cost = commitment_cost
+        self._decay = decay
+        self._epsilon = 1e-5
+
+    @torch.no_grad()
+    def update_ema(self, z, code_indices):
+        nB, zH, zW, zC = z.shape # batch, height, width, channel
+        nCodes = self._num_embeddings
+
+        encodings = tnf.one_hot(code_indices, num_classes=nCodes).float()
+        assert encodings.shape == (nB, zH, zW, nCodes)
+        cluster_size = torch.sum(encodings, dim=(0,1,2))
+        self._ema_cluster_size = self._ema_cluster_size * self._decay + (1 - self._decay) * cluster_size
+        # Laplace smoothing of the cluster size
+        n = torch.sum(self._ema_cluster_size.data)
+        self._ema_cluster_size = ((self._ema_cluster_size + self._epsilon) /
+                                  (n + self._num_embeddings * self._epsilon) * n)
+        # moving average k-means
+        # TODO: handle the case when batch size is not constant
+        flat_coding = torch.flatten(encodings, start_dim=0, end_dim=2)
+        flat_z = torch.flatten(z, start_dim=0, end_dim=2)
+        dw = torch.matmul(flat_coding.t(), flat_z)
+        self._ema_w.data = self._ema_w * self._decay + (1 - self._decay) * dw
+        self.codebook.data = self._ema_w / self._ema_cluster_size.unsqueeze(1)
+
+    def forward(self, z):
+        z = z.permute(0, 2, 3, 1).contiguous() # convert z from BCHW -> BHWC
+        nB, zH, zW, zC = z.shape # batch, height, width, channel
+        assert zC == self._embedding_dim
+        nCodes = self._num_embeddings
+
+        # Compute distances
+        with torch.no_grad():
+            distances = torch.cdist(z, self.codebook)
+            assert distances.shape == (nB, zH, zW, nCodes)
+            # Encoding
+            code_indices = torch.argmin(distances, dim=3) # (B, H, W)
+            # Quantize and unflatten
+            z_quantized = self.codebook[code_indices, :] # (B, H, W, C)
+            assert z_quantized.shape == (nB, zH, zW, zC)
+
+        # Use EMA to update the embedding vectors
+        if self.training:
+            self.update_ema(z, code_indices)
+
+        # Loss
+        commitment_loss = tnf.mse_loss(z, z_quantized.detach())
+        loss = self._commitment_cost * commitment_loss
+
+        # Straight Through Estimator
+        z_quantized = z + (z_quantized - z).detach()
+        z_quantized = z_quantized.permute(0, 3, 1, 2).contiguous() # BHWC -> BCHW
+        # Code entropy
+        # avg_probs = torch.mean(encodings, dim=0)
+        # perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
+
+        # convert z_quantized from BHWC -> BCHW
+        return loss, z_quantized, code_indices
+
+    def forward_train(self, inputs):
+        vq_loss, z_quantized, code_indices = self.forward(inputs)
+        self.bits_per_batch = self.get_bits(code_indices) # workaround
+        return vq_loss, z_quantized
+
+    @torch.no_grad()
+    def get_probs(self, indices):
+        _ema_frequency = self._ema_cluster_size + self._epsilon
+        pmf = _ema_frequency / _ema_frequency.sum()
+        assert pmf.min() >= 0 and (pmf.sum()-1).abs() < 1e-6
+        probs = pmf[indices]
+        return probs
+
+    @torch.no_grad()
+    def get_bits(self, indices):
+        probs = self.get_probs(indices)
+        bits = (-1.0 * torch.log2(probs)).mean(0).sum()
+        return bits
+
+    @torch.no_grad()
+    def quantize(self, inputs):
+        inputs = inputs.permute(0, 2, 3, 1).contiguous() # BCHW -> BHWC
+        # inputs (B, H, W, C), codebook (num, C)
+        distances = torch.cdist(inputs, self.codebook)
+        # distances (B, H, W, num)
+        code_indices = torch.argmin(distances, dim=3)
+        z_quantized = self.codebook[code_indices, :]
+        z_quantized = z_quantized.permute(0, 3, 1, 2).contiguous() # BHWC -> BCHW
+        return z_quantized
+
+
 class ResBlock(nn.Module):
     def __init__(self, in_out, hidden=None):
         super().__init__()
@@ -29,22 +130,17 @@ class ResBlock(nn.Module):
         out = input + x
         return out
 
+
 class BottleneckVQ8(nn.Module):
     def __init__(self, num_enc_channels, num_codes, num_target_channels=256):
         super().__init__()
         self.encoder = nn.Sequential(
-            # nn.Conv2d(3, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
-            # nn.GELU(),
-            # nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
-            # nn.GELU(),
-            # nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=5, stride=2, padding=2, bias=True),
-            # nn.GELU(),
-            # nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=3, stride=1, padding=1, bias=True)
             nn.Conv2d(3, num_enc_channels, kernel_size=8, stride=8, padding=0, bias=True),
             ResBlock(num_enc_channels),
             ResBlock(num_enc_channels),
             ResBlock(num_enc_channels),
             ResBlock(num_enc_channels),
+            nn.Conv2d(num_enc_channels, num_enc_channels, kernel_size=1, stride=1, padding=0),
         )
         self.decoder = nn.Sequential(
             deconv(num_enc_channels, num_target_channels),
@@ -55,7 +151,6 @@ class BottleneckVQ8(nn.Module):
             nn.GELU(),
             nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
         )
-        from mycv.models.vae.vqvae.myvqvae import MyCodebookEMA
         self.codebook = MyCodebookEMA(num_codes, embedding_dim=num_enc_channels, commitment_cost=0.1)
         self._flops_mode = False
 
