@@ -201,7 +201,7 @@ class VQBottleneckResNet(nn.Module):
         else:
             bppix = -1.0 * torch.log2(p_z).mean(0).sum() / float(imH * imW)
         stats['bppix'] = bppix
-        stats['loss'] = float(l_cls + self.bpp_lmb * bppix)
+        stats['loss'] = float(l_cls + bppix)
         return stats
 
     def state_dict(self):
