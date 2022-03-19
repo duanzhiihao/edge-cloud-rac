@@ -35,7 +35,7 @@ class BottleneckVQ8(nn.Module):
             nn.GELU(),
             nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
             nn.GELU(),
-            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=1, bias=True)
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
         )
         from mycv.models.vae.vqvae.myvqvae import MyCodebookEMA
         self.codebook = MyCodebookEMA(num_codes, embedding_dim=num_enc_channels, commitment_cost=0.25)
@@ -193,7 +193,7 @@ class VQBottleneckResNet(nn.Module):
         return msd
 
 @register_model
-def baseline_vq8(num_classes=1000, num_codes=256, teacher=True):
+def baseline_vq8(num_classes=1000, num_codes=1024, teacher=True):
     model = VQBottleneckResNet(zdim=64, num_codes=num_codes, num_classes=num_classes, teacher=teacher)
     return model
 
