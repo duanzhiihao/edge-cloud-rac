@@ -180,7 +180,7 @@ class VQBottleneckResNet(nn.Module):
             num_bits = get_object_size(compressed_obj)
             x1 = self.bottleneck_layer.decompress(compressed_obj)
         else:
-            x1, p_z = self.bottleneck_layer(x)
+            x1, p_z, vq_loss = self.bottleneck_layer(x)
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
