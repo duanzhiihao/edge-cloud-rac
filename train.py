@@ -177,8 +177,7 @@ class TrainWrapper():
         self.model = model.to(self.device)
 
         if self.distributed: # DDP mode
-            self.model = DDP(model, device_ids=[self.local_rank], output_device=self.local_rank,
-                             find_unused_parameters=True)
+            self.model = DDP(model, device_ids=[self.local_rank], output_device=self.local_rank)
 
     def set_optimizer_(self):
         cfg, model = self.cfg, self.model
