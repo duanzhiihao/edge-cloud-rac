@@ -58,8 +58,8 @@ def get_config():
     parser.add_argument('--eval_first', action=argparse.BooleanOptionalAction, default=True)
     # device setting
     parser.add_argument('--fixseed',    action='store_true')
-    # parser.add_argument('--device',     type=int,  default=[0], nargs='+')
     parser.add_argument('--workers',    type=int,  default=0)
+    parser.add_argument('--ddp_find',   action=argparse.BooleanOptionalAction, default=False)
     cfg = parser.parse_args()
 
     # model
@@ -177,7 +177,8 @@ class TrainWrapper():
         self.model = model.to(self.device)
 
         if self.distributed: # DDP mode
-            self.model = DDP(model, device_ids=[self.local_rank], output_device=self.local_rank)
+            self.model = DDP(model, device_ids=[self.local_rank], output_device=self.local_rank,
+                             find_unused_parameters=cfg.ddp_find)
 
     def set_optimizer_(self):
         cfg, model = self.cfg, self.model
