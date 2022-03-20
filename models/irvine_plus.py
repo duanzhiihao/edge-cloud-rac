@@ -1,11 +1,81 @@
 from functools import partial
 import torch
 import torch.nn as nn
+import torch.nn.functional as tnf
 from torchvision.models.mobilenetv3 import ConvNormActivation, InvertedResidual, InvertedResidualConfig
 
 from compressai.models.google import CompressionModel
 from models.registry import register_model
 from models.irvine2022wacv import BottleneckResNet
+
+
+def deconv(in_channels, out_channels, kernel_size=5, stride=2):
+    return nn.ConvTranspose2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        output_padding=stride - 1,
+        padding=kernel_size // 2,
+    )
+
+class ResBlock(nn.Module):
+    def __init__(self, in_out, hidden=None):
+        super().__init__()
+        hidden = hidden or (in_out // 2)
+        self.conv_1 = nn.Conv2d(in_out, hidden, kernel_size=3, padding=1)
+        self.conv_2 = nn.Conv2d(hidden, in_out, kernel_size=3, padding=1)
+
+    def forward(self, input):
+        x = self.conv_1(tnf.gelu(input))
+        x = self.conv_2(tnf.gelu(x))
+        out = input + x
+        return out
+
+class Bottleneck8(CompressionModel):
+    def __init__(self, zdim, num_target_channels=256):
+        super().__init__(zdim)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, zdim*2, kernel_size=8, stride=8, padding=0, bias=True),
+            ResBlock(zdim*2),
+            ResBlock(zdim*2),
+            ResBlock(zdim*2),
+            ResBlock(zdim*2),
+            nn.Conv2d(zdim*2, zdim, kernel_size=1, stride=1, padding=0),
+        )
+        self.decoder = nn.Sequential(
+            deconv(zdim, num_target_channels),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
+        )
+        self._flops_mode = False
+
+    def flops_mode_(self):
+        self.decoder = None
+        self._flops_mode = True
+
+    @torch.autocast('cuda', enabled=False)
+    def encode(self, x):
+        z = self.encoder(x)
+        z_quantized, z_probs = self.entropy_bottleneck(z)
+        return z_quantized, z_probs
+
+    def forward(self, x):
+        z_quantized, z_probs = self.encode(x)
+        if self._flops_mode:
+            return z_quantized, z_probs
+        x_hat = self.decoder(z_quantized)
+        return x_hat, z_probs
+
+@register_model
+def baseline_s8(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher)
+    model.bottleneck_layer = Bottleneck8(64, 256)
+    return model
 
 
 class CustomBottleneck(CompressionModel):
