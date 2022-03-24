@@ -56,6 +56,7 @@ def get_config():
     parser.add_argument('--ema',        action=argparse.BooleanOptionalAction, default=True)
     # miscellaneous training setting
     parser.add_argument('--eval_first', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--eval_per',   type=int,  default=1)
     # device setting
     parser.add_argument('--fixseed',    action='store_true')
     parser.add_argument('--workers',    type=int,  default=0)
@@ -353,7 +354,7 @@ class TrainWrapper():
 
             pbar = enumerate(self.trainloader)
             if self.is_main:
-                if (epoch != self._start_epoch) or cfg.eval_first:
+                if ((epoch != self._start_epoch) or cfg.eval_first) and (epoch % cfg.eval_per == 0):
                     self.evaluate(epoch, niter=epoch*len(self.trainloader))
 
                 self.init_logging_()
