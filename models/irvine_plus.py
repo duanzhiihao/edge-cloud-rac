@@ -6,7 +6,7 @@ from torchvision.models.mobilenetv3 import ConvNormActivation, InvertedResidual,
 
 from compressai.models.google import CompressionModel
 from models.registry import register_model
-from models.irvine2022wacv import BottleneckResNet
+from models.irvine2022wacv import InputBottleneck, BottleneckResNet
 
 
 def deconv(in_channels, out_channels, kernel_size=5, stride=2):
@@ -32,7 +32,7 @@ class ResBlock(nn.Module):
         out = input + x
         return out
 
-class Bottleneck8(CompressionModel):
+class Bottleneck8(InputBottleneck):
     def __init__(self, zdim, num_target_channels=256):
         super().__init__(zdim)
         self.encoder = nn.Sequential(
@@ -52,29 +52,40 @@ class Bottleneck8(CompressionModel):
             nn.GELU(),
             nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
         )
-        self._flops_mode = False
-
-    def flops_mode_(self):
-        self.decoder = None
-        self._flops_mode = True
-
-    @torch.autocast('cuda', enabled=False)
-    def encode(self, x):
-        z = self.encoder(x)
-        z_quantized, z_probs = self.entropy_bottleneck(z)
-        return z_quantized, z_probs
-
-    def forward(self, x):
-        z_quantized, z_probs = self.encode(x)
-        if self._flops_mode:
-            return z_quantized, z_probs
-        x_hat = self.decoder(z_quantized)
-        return x_hat, z_probs
 
 @register_model
 def baseline_s8(num_classes=1000, bpp_lmb=1.28, teacher=True):
-    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher)
-    model.bottleneck_layer = Bottleneck8(64, 256)
+    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=Bottleneck8(64, 256))
+    return model
+
+
+class Bottleneck16(InputBottleneck):
+    def __init__(self, zdim, num_target_channels=256):
+        super().__init__(zdim)
+        width = round(zdim*4/3)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, width, kernel_size=16, stride=16, padding=0, bias=True),
+            ResBlock(width),
+            ResBlock(width),
+            ResBlock(width),
+            ResBlock(width),
+            nn.Conv2d(width, zdim, kernel_size=1, stride=1, padding=0),
+        )
+        self.decoder = nn.Sequential(
+            deconv(zdim, num_target_channels, stride=4),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
+        )
+
+@register_model
+def baseline_s16(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    model = BottleneckResNet(zdim=192, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=Bottleneck16(192, 256))
     return model
 
 

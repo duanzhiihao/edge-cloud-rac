@@ -12,24 +12,11 @@ from mycv.utils.lr_schedulers import get_cosine_lrf
 from mycv.utils.coding import get_object_size
 
 
-
-class BottleneckResNetLayerWithIGDN(CompressionModel):
-    def __init__(self, num_enc_channels=24, num_target_channels=256):
-        super().__init__(entropy_bottleneck_channels=num_enc_channels)
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, num_enc_channels * 4, kernel_size=5, stride=2, padding=2, bias=False),
-            GDN1(num_enc_channels * 4),
-            nn.Conv2d(num_enc_channels * 4, num_enc_channels * 2, kernel_size=5, stride=2, padding=2, bias=False),
-            GDN1(num_enc_channels * 2),
-            nn.Conv2d(num_enc_channels * 2, num_enc_channels, kernel_size=2, stride=1, padding=0, bias=False)
-        )
-        self.decoder = nn.Sequential(
-            nn.Conv2d(num_enc_channels, num_target_channels * 2, kernel_size=2, stride=1, padding=1, bias=False),
-            GDN1(num_target_channels * 2, inverse=True),
-            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=2, stride=1, padding=0, bias=False),
-            GDN1(num_target_channels, inverse=True),
-            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=False)
-        )
+class InputBottleneck(CompressionModel):
+    def __init__(self, zdim):
+        super().__init__(entropy_bottleneck_channels=zdim)
+        self.encoder: nn.Module
+        self.decoder: nn.Module
         self._flops_mode = False
 
     def flops_mode_(self):
@@ -63,10 +50,32 @@ class BottleneckResNetLayerWithIGDN(CompressionModel):
         return feature
 
 
+class BottleneckResNetLayerWithIGDN(InputBottleneck):
+    def __init__(self, num_enc_channels=24, num_target_channels=256):
+        super().__init__(num_enc_channels)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, num_enc_channels * 4, kernel_size=5, stride=2, padding=2, bias=False),
+            GDN1(num_enc_channels * 4),
+            nn.Conv2d(num_enc_channels * 4, num_enc_channels * 2, kernel_size=5, stride=2, padding=2, bias=False),
+            GDN1(num_enc_channels * 2),
+            nn.Conv2d(num_enc_channels * 2, num_enc_channels, kernel_size=2, stride=1, padding=0, bias=False)
+        )
+        self.decoder = nn.Sequential(
+            nn.Conv2d(num_enc_channels, num_target_channels * 2, kernel_size=2, stride=1, padding=1, bias=False),
+            GDN1(num_target_channels * 2, inverse=True),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=2, stride=1, padding=0, bias=False),
+            GDN1(num_target_channels, inverse=True),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=2, stride=1, padding=1, bias=False)
+        )
+
+
 class BottleneckResNet(nn.Module):
-    def __init__(self, zdim=24, num_classes=1000, bpp_lmb=0.02, teacher=True, mode='joint'):
+    def __init__(self, zdim=24, num_classes=1000, bpp_lmb=0.02, teacher=True, mode='joint',
+                 bottleneck_layer=None):
         super().__init__()
-        self.bottleneck_layer = BottleneckResNetLayerWithIGDN(zdim, 256)
+        if bottleneck_layer is None:
+            bottleneck_layer = BottleneckResNetLayerWithIGDN(zdim, 256)
+        self.bottleneck_layer = bottleneck_layer
 
         from torchvision.models.resnet import resnet50
         resnet_model = resnet50(pretrained=True, num_classes=num_classes)
