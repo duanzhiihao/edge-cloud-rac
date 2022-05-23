@@ -82,10 +82,10 @@ def plot_mobilecloud():
         'acc': [71.42, 73.36, 74.66],
         'bpp': [0.3237, 0.5818, 0.8305]
     }
-    plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl., last week)')
+    # plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl., last week)')
     wacv2022 = {
-        'acc': [68.02, 70.9, 72.6, 74.03, 74.75, 76.21],
-        'bpp': [0.2309, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
+        'acc': [67.95, 70.9, 72.6, 74.03, 74.75, 76.21],
+        'bpp': [0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
     }
     plot(wacv2022['bpp'], wacv2022['acc'], label='Baseline (my impl.)')
 
@@ -111,7 +111,31 @@ def plot_mobilecloud():
         'acc': [71.07, 71.96, 72.85],
         'bpp': [0.2883, 0.3467, 0.4636]
     }
-    plot(vq['bpp'], vq['acc'], label='Baseline w/ VQ')
+    # plot(vq['bpp'], vq['acc'], label='Baseline w/ VQ x4')
+
+    vq = {
+        'acc': [69.59, 69.18],
+        'bpp': [0.1366, 0.168]
+    }
+    # plot(vq['bpp'], vq['acc'], label='Baseline w/ VQ x8')
+
+    rate_acc = {
+        'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
+        'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
+    }
+    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x')
+
+    rate_acc = {
+        'bpp': [0.09303, 0.1125, 0.1443, 0.1754, 0.2143, 0.3236, 0.4604, 0.7328, 1.222, 2.293],
+        'acc': [67.03, 68.19, 69.25, 69.85, 71.14, 72.63, 73.55, 74.72, 75.17, 75.27],
+    }
+    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x small')
+
+    rate_acc = {
+        'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
+        'acc': [65.01, 66.13, 67.99, 69.7, 71.98, 73.23],
+    }
+    # plot(rate_acc['bpp'][1:], rate_acc['acc'][1:], label='Baseline w/ encoder 16x')
 
     ours = {
         'acc': [73.28, 75.22],
@@ -130,8 +154,8 @@ def plot_mobilecloud():
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     plt.xscale('log')
-    plt.xlim(0.14, 2.0)
-    plt.xticks([0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8])
+    plt.xlim(0.13, 2.0)
+    plt.xticks([0.13, 0.2, 0.321, 0.4, 0.5, 0.595, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8])
     ax1.get_xaxis().set_major_formatter(ScalarFormatter())
     # plt.yticks(list(range()))
     # plt.ylim(22, 42)
