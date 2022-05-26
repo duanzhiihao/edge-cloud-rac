@@ -132,6 +132,12 @@ def plot_mobilecloud():
     plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x small')
 
     rate_acc = {
+        'bpp': [0.1786, 0.2829, 0.4206, 0.5508, 0.7209, 1.178],
+        'acc': [67.83, 70.69, 73.06, 73.84, 74.07, 74.64],
+    }
+    plot(rate_acc['bpp'], rate_acc['acc'], label='Baseline w/ encoder 8x tiny')
+
+    rate_acc = {
         'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
         'acc': [65.01, 66.13, 67.99, 69.7, 71.98, 73.23],
     }
@@ -155,7 +161,7 @@ def plot_mobilecloud():
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     plt.xscale('log')
     plt.xlim(0.13, 2.0)
-    plt.xticks([0.13, 0.2, 0.321, 0.4, 0.5, 0.595, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8])
+    plt.xticks([0.13, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8])
     ax1.get_xaxis().set_major_formatter(ScalarFormatter())
     # plt.yticks(list(range()))
     # plt.ylim(22, 42)
