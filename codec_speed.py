@@ -32,8 +32,8 @@ def speedtest_pil(img_format, **kwargs):
         img_byte_arr = img_byte_arr.getvalue()
         encode_time += (time() - tic)
 
-    latency = encode_time / float(len(img_paths))
-    print(f'{img_format}: time per image = {latency}s')
+    latency_ms = encode_time / float(len(img_paths)) * 1000
+    print(f'{img_format}: time per image = {latency_ms}ms')
     debug = 1
 
 
@@ -50,8 +50,8 @@ def speedtest_cv2(img_format):
         img_str = cv2.imencode(img_format, im)[1].tobytes()
         encode_time += (time() - tic)
 
-    latency = encode_time / float(len(img_paths))
-    print(f'{img_format}: time per image = {latency}s')
+    latency_ms = encode_time / float(len(img_paths)) * 1000
+    print(f'{img_format}: time per image = {latency_ms}ms')
     debug = 1
 
 
