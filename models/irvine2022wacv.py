@@ -36,6 +36,9 @@ class InputBottleneck(CompressionModel):
         x_hat = self.decoder(z_quantized)
         return x_hat, z_probs
 
+    def update(self, force=False):
+        return self.entropy_bottleneck.update(force=force)
+
     @torch.no_grad()
     def compress(self, x):
         z = self.encoder(x)
