@@ -114,11 +114,11 @@ class Bottleneck8next(InputBottleneck):
     def __init__(self, zdim, num_target_channels=256):
         super().__init__(zdim)
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, zdim*2, kernel_size=8, stride=8, padding=0, bias=True),
-            ConvNeXtBlock(zdim*2, conv_mlp=False, mlp_ratio=1.5),
-            ConvNeXtBlock(zdim*2, conv_mlp=False, mlp_ratio=1.5),
-            ConvNeXtBlock(zdim*2, conv_mlp=False, mlp_ratio=1.5),
-            nn.Conv2d(zdim*2, zdim, kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(3, zdim, kernel_size=8, stride=8, padding=0, bias=True),
+            ConvNeXtBlock(zdim, conv_mlp=False, mlp_ratio=4),
+            ConvNeXtBlock(zdim, conv_mlp=False, mlp_ratio=4),
+            ConvNeXtBlock(zdim, conv_mlp=False, mlp_ratio=4),
+            ConvNeXtBlock(zdim, conv_mlp=False, mlp_ratio=4),
         )
         self.decoder = nn.Sequential(
             deconv(zdim, num_target_channels),
