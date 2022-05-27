@@ -5,9 +5,10 @@ from models.registry import get_model
 
 
 def main():
+    name = 'baseline_s8x'
     # model = get_model('irvine2022wacv')().bottleneck_layer
     # model = get_model('baseline_vq8')(num_codes=1024).bottleneck_layer
-    model = get_model('baseline_s8t')().bottleneck_layer
+    model = get_model(name)().bottleneck_layer
     model.flops_mode_()
 
     model.eval()
@@ -15,8 +16,15 @@ def main():
     shape = (3, 224, 224)
     flops_benchmark(model, input_shape=shape)
     device = torch.device('cpu')
-    speed_benchmark(model, input_shapes=[shape], device=device, bs=1, N=4000)
+    # speed_benchmark(model, input_shapes=[shape], device=device, bs=1, N=2000)
 
+    if True:
+        from ptflops import get_model_complexity_info
+        fpath = f'runs/{name}.txt'
+        with open(fpath, 'w') as f:
+            ptfl_macs, ptfl_params = get_model_complexity_info(model, shape,
+                                        as_strings=False, ost=f, verbose=True)
+        exit()
     debug = 1
 
 
