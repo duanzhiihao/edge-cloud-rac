@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as tnf
 from torchvision.models.mobilenetv3 import ConvNormActivation, InvertedResidual, InvertedResidualConfig
 
+from timm.models.convnext import ConvNeXtBlock, LayerNorm2d
 from compressai.models.google import CompressionModel
 from models.registry import register_model
 from models.irvine2022wacv import InputBottleneck, BottleneckResNet
@@ -109,6 +110,33 @@ def baseline_s8t(num_classes=1000, bpp_lmb=1.28, teacher=True):
     return model
 
 
+class Bottleneck8next(InputBottleneck):
+    def __init__(self, zdim, num_target_channels=256):
+        super().__init__(zdim)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, zdim*2, kernel_size=8, stride=8, padding=0, bias=True),
+            ConvNeXtBlock(zdim*2, conv_mlp=False, mlp_ratio=1.5),
+            ConvNeXtBlock(zdim*2, conv_mlp=False, mlp_ratio=1.5),
+            ConvNeXtBlock(zdim*2, conv_mlp=False, mlp_ratio=1.5),
+            nn.Conv2d(zdim*2, zdim, kernel_size=1, stride=1, padding=0),
+        )
+        self.decoder = nn.Sequential(
+            deconv(zdim, num_target_channels),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
+        )
+
+@register_model
+def baseline_s8x(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=Bottleneck8next(64, 256))
+    return model
+
+
 class Bottleneck16(InputBottleneck):
     def __init__(self, zdim, num_target_channels=256):
         super().__init__(zdim)
@@ -138,67 +166,7 @@ def baseline_s16(num_classes=1000, bpp_lmb=1.28, teacher=True):
     return model
 
 
-class CustomBottleneck(CompressionModel):
-    def __init__(self, enc_configs, dec_configs, outdim=256, _flops_mode=False):
-        zdim = enc_configs[-1].out_channels
-        super().__init__(entropy_bottleneck_channels=zdim)
 
-        enc_layers = []
-        firstconv_output_channels = enc_configs[0].input_channels
-        enc_layers.append(ConvNormActivation(3, firstconv_output_channels, kernel_size=3, stride=2,
-                                             norm_layer=None, activation_layer=nn.ReLU))
-        for cfg in enc_configs:
-            enc_layers.append(InvertedResidual(cfg, norm_layer=None))
-        self.encoder = nn.Sequential(*enc_layers)
-
-        dec_layers = []
-        # for cfg in dec_configs:
-        #     dec_layers.append(InvertedResidual(cfg, norm_layer=None))
-        dec_layers.append(ConvNormActivation(zdim, outdim*2, 3, 1, norm_layer=None))
-        dec_layers.append(ConvNormActivation(outdim*2, outdim, 3, 1, norm_layer=None))
-        dec_layers.append(ConvNormActivation(outdim, outdim, 3, 1, norm_layer=None))
-        self.decoder = nn.Sequential(*dec_layers)
-
-        if _flops_mode:
-            self.decoder = None
-        self._flops_mode = _flops_mode
-
-    def flops_mode_(self):
-        self.decoder = None
-        self._flops_mode = True
-
-    @torch.autocast('cuda', enabled=False)
-    def encode(self, x):
-        z = self.encoder(x)
-        z_quantized, z_probs = self.entropy_bottleneck(z)
-        return z_quantized, z_probs
-
-    def forward(self, x):
-        z_quantized, z_probs = self.encode(x)
-        if self._flops_mode:
-            return z_quantized, z_probs
-        x_hat = self.decoder(z_quantized)
-        return x_hat, z_probs
-
-
-@register_model
-def plus_v1(num_classes=1000, bpp_lmb=1.28, teacher=True):
-    model = BottleneckResNet(zdim=24, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher)
-    cfg = partial(InvertedResidualConfig, use_se=False, activation='RE', dilation=1, width_mult=1.0)
-    enc_configs = [
-        cfg(16, kernel=3, expanded_channels=24, out_channels=16, stride=1),
-        cfg(16, kernel=3, expanded_channels=64, out_channels=24, stride=2),
-        cfg(24, kernel=3, expanded_channels=72, out_channels=24, stride=1),
-        cfg(24, kernel=3, expanded_channels=72, out_channels=24, stride=1),
-    ]
-    dec_configs = [
-        cfg(24, kernel=3, expanded_channels=72, out_channels=64, stride=1),
-    ]
-    model.bottleneck_layer = CustomBottleneck(enc_configs, dec_configs, 256)
-    return model
-
-
-from timm.models.convnext import ConvNeXtBlock, LayerNorm2d
 # class ConvNeXtBlock5x5(ConvNeXtBlock):
 #     def __init__(self, dim, drop_path=0., ls_init_value=1e-6, conv_mlp=False, mlp_ratio=4, norm_layer=None):
 #         super().__init__(dim, drop_path, ls_init_value, conv_mlp, mlp_ratio, norm_layer)
@@ -252,3 +220,30 @@ def plus_convnext(num_classes=1000, bpp_lmb=1.28, teacher=True):
     model = BottleneckResNet(zdim=24, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher)
     model.bottleneck_layer = CustomConvBottleneck(24, 256)
     return model
+
+
+# class DiscretizedGaussianBottleneck(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         from compressai.entropy_models import GaussianConditional
+#         self.gaussian_conditional = GaussianConditional(scale_table=None)
+
+#     def update(self):
+#         import math
+#         # From Balle's tensorflow compression examples
+#         lower = self.gaussian_conditional.lower_bound_scale.bound.item()
+#         max_scale = 20
+#         scale_table = torch.exp(torch.linspace(math.log(lower), math.log(max_scale), steps=32))
+#         updated = self.gaussian_conditional.update_scale_table(scale_table)
+#         self.gaussian_conditional.update()
+
+#     def compress(self, x):
+#         mean = torch.randn_like(x)
+#         scales = torch.rand_like(x) * 4
+#         indexes = self.gaussian_conditional.build_indexes(scales)
+#         y_strings = self.gaussian_conditional.compress(x, indexes)
+#         return y_strings
+
+#     @torch.no_grad()
+#     def decompress(self, compressed_obj):
+#         raise NotImplementedError()
