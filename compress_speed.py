@@ -52,16 +52,27 @@ def speedtest_entropy_coding(model):
 
 @torch.no_grad()
 def main():
-    for encoder in [
-        # get_model('baseline_s8')().bottleneck_layer,
-        # get_model('baseline_s8s')().bottleneck_layer,
-        get_model('baseline_s8x')().bottleneck_layer,
-    ]:
+    if False: # True, False
+        model = get_model('baseline_s8s')(teacher=False)
+        msd = torch.load('d:/projects/_logs/last_ema.pt')['model']
+        model.load_state_dict(msd)
+        encoder = model.bottleneck_layer
         encoder.flops_mode_()
         encoder.update()
         speedtest_model(encoder)
 
-    if False:
+    for encoder in [
+        # get_model('irvine2022wacv')().bottleneck_layer,
+        # get_model('baseline_s8')().bottleneck_layer,
+        # get_model('baseline_s8s')().bottleneck_layer,
+        # get_model('baseline_s8x')().bottleneck_layer,
+    ]:
+        encoder.flops_mode_()
+        encoder.update()
+        speedtest_model(encoder)
+        exit()
+
+    if False: # True, False
         from models.entropy_bottleneck import EntropyBottleneck
         encoder = EntropyBottleneck(64)
         encoder.update()

@@ -123,19 +123,28 @@ def plot_mobilecloud():
         'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
         'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
     }
-    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x')
+    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Ours s8')
+    # plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x')
 
     rate_acc = {
         'bpp': [0.09303, 0.1125, 0.1443, 0.1754, 0.2143, 0.3236, 0.4604, 0.7328, 1.222, 2.293],
         'acc': [67.03, 68.19, 69.25, 69.85, 71.14, 72.63, 73.55, 74.72, 75.17, 75.27],
     }
-    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x small')
+    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Ours s8 small')
+    # plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x small')
 
     rate_acc = {
         'bpp': [0.1786, 0.2829, 0.4206, 0.5508, 0.7209, 1.178],
         'acc': [67.83, 70.69, 73.06, 73.84, 74.07, 74.64],
     }
-    plot(rate_acc['bpp'], rate_acc['acc'], label='Baseline w/ encoder 8x tiny')
+    plot(rate_acc['bpp'], rate_acc['acc'], label='Ours s8 tiny')
+    # plot(rate_acc['bpp'], rate_acc['acc'], label='Baseline w/ encoder 8x tiny')
+
+    rate_acc = {
+        'bpp': [0.1532, 0.2359],
+        'acc': [68.25, 70.79],
+    }
+    plot(rate_acc['bpp'], rate_acc['acc'], label='Ours s8 next')
 
     rate_acc = {
         'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
