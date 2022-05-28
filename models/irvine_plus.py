@@ -60,6 +60,32 @@ def baseline_s8(num_classes=1000, bpp_lmb=1.28, teacher=True):
                              bottleneck_layer=Bottleneck8(64, 256))
     return model
 
+class Bottleneck8v2(InputBottleneck):
+    def __init__(self, zdim, target_ch=256):
+        super().__init__(zdim)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, zdim*2, kernel_size=8, stride=8, padding=0, bias=True),
+            ResBlock(zdim*2),
+            ResBlock(zdim*2),
+            ResBlock(zdim*2),
+            ResBlock(zdim*2),
+            nn.Conv2d(zdim*2, zdim, kernel_size=1, stride=1, padding=0),
+        )
+        self.decoder = nn.Sequential(
+            nn.Conv2d(zdim, target_ch, kernel_size=1),
+            ConvNeXtBlock(target_ch, conv_mlp=False, mlp_ratio=4),
+            ConvNeXtBlock(target_ch, conv_mlp=False, mlp_ratio=4),
+            nn.Conv2d(target_ch, target_ch*4, kernel_size=1),
+            nn.PixelShuffle(2),
+            # nn.Conv2d(target_ch, target_ch, kernel_size=1, stride=1, padding=0),
+        )
+
+@register_model
+def baseline_s8v2(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=Bottleneck8v2(64, 256))
+    return model
+
 class Bottleneck8small(InputBottleneck):
     def __init__(self, zdim, num_target_channels=256):
         super().__init__(zdim)
