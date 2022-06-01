@@ -82,6 +82,13 @@ class BottleneckResNet(nn.Module):
 
         from torchvision.models.resnet import resnet50
         resnet_model = resnet50(pretrained=True, num_classes=num_classes)
+        # if mode == 'encoder':
+        #     for p in resnet_model.parameters():
+        #         p.requires_grad_(False)
+        #     for m in resnet_model.modules():
+        #         if isinstance(m, nn.BatchNorm2d):
+        #             m.track_running_stats = False
+        #         debug = 1
         self.layer2 = resnet_model.layer2
         self.layer3 = resnet_model.layer3
         self.layer4 = resnet_model.layer4
@@ -102,8 +109,9 @@ class BottleneckResNet(nn.Module):
             for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
                                      self.layer4.parameters(), self.fc.parameters()):
                 p.requires_grad_(False)
-            self.lambdas = [0.0, 1.0, self.bpp_lmb] # cls, trs, bpp
+            self.lambdas = [1.0, 1.0, self.bpp_lmb] # cls, trs, bpp
         elif mode == 'classifier':
+            raise DeprecationWarning()
             for p in self.bottleneck_layer.encoder.parameters():
                 p.requires_grad_(False)
             for p in self.bottleneck_layer.entropy_bottleneck.parameters():

@@ -126,6 +126,12 @@ def baseline_s8t(num_classes=1000, bpp_lmb=1.28, teacher=True):
                              bottleneck_layer=Bottleneck8tiny(64, 256))
     return model
 
+@register_model
+def s8t_enc(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=Bottleneck8tiny(64, 256), mode='encoder')
+    return model
+
 
 class Bottleneck8next(InputBottleneck):
     def __init__(self, zdim, num_target_channels=256):
