@@ -50,6 +50,15 @@ def plot_mobilecloud():
     jpeg_res50_wacv2022['bpp'] = [kb*1024*8 / (224*224) for kb in jpeg_res50_wacv2022['kbyte']]
     # plot(jpeg_res50_wacv2022['bpp'], jpeg_res50_wacv2022['acc'], label='JPEG dec. + ResNet-50 (Irvine)')
 
+    results = {
+        'quality': [1, 8, 16, 32, 64, 80, 96],
+        'bpp': [0.233027, 0.361705, 0.466873, 0.661756, 1.028537, 1.418366, 3.293082],
+        'acc': [46.67, 56.37, 61.34, 67.39, 70.546, 72.138, 73.956],
+        'acc-ft': [68.06, 71.01, 72.41, 73.95, 75.25, 75.74, None],
+    }
+    # plot(results['bpp'], results['acc'], label='WebP, no fine-tune')
+    plot(results['bpp'], results['acc-ft'], label='WebP, fine-tune')
+
     ours_tcsvt = {
         'acc': [73.79, 72.82, 68.37],
         'bpp': [0.595, 0.321, 0.133]
@@ -144,7 +153,7 @@ def plot_mobilecloud():
         'bpp': [0.1532, 0.2359],
         'acc': [68.25, 70.79],
     }
-    plot(rate_acc['bpp'], rate_acc['acc'], label='Ours s8 next')
+    # plot(rate_acc['bpp'], rate_acc['acc'], label='Ours s8 next')
 
     rate_acc = {
         'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
