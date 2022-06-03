@@ -505,6 +505,7 @@ class TrainWrapper():
         return results
 
     def _save_if_best(self, checkpoint):
+        return
         assert self.is_main
         # save checkpoint if it is the best so far
         cur_loss = checkpoint['results']['loss']
