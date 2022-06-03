@@ -105,6 +105,7 @@ class BottleneckResNet(nn.Module):
 
         self.bpp_lmb = float(bpp_lmb)
 
+        self.train_mode = mode
         if mode == 'encoder':
             for p in itertools.chain(self.layer2.parameters(), self.layer3.parameters(),
                                      self.layer4.parameters(), self.fc.parameters()):
@@ -123,6 +124,16 @@ class BottleneckResNet(nn.Module):
             raise ValueError()
 
         self.compress_mode = False
+
+    def train(self, mode=True):
+        super().train(mode)
+        if self.train_mode == 'encoder': # make classifier and teacher always eval
+            self.layer2.eval()
+            self.layer3.eval()
+            self.layer4.eval()
+            if self._teacher is not None:
+                self._teacher.eval()
+        return self
 
     def compress_mode_(self):
         self.bottleneck_layer.update(force=True)
