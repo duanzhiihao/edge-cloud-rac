@@ -63,7 +63,7 @@ def main():
 
     for encoder in [
         # get_model('irvine2022wacv')().bottleneck_layer,
-        # get_model('baseline_s8')().bottleneck_layer,
+        get_model('baseline_s8v2')().bottleneck_layer,
         # get_model('baseline_s8s')().bottleneck_layer,
         # get_model('baseline_s8t')().bottleneck_layer,
         # get_model('baseline_s8x')().bottleneck_layer,

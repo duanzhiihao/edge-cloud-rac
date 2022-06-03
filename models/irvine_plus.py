@@ -85,6 +85,7 @@ class Bottleneck8v2(Bottleneck8):
             ResBlockv2(hidden),
             ResBlockv2(hidden),
             ResBlockv2(hidden),
+            # nn.GELU(),
             nn.Conv2d(hidden, zdim, kernel_size=1, stride=1, padding=0),
         )
 

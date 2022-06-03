@@ -5,7 +5,7 @@ from models.registry import get_model
 
 
 def test_encoder():
-    name = 'baseline_s8t'
+    name = 'baseline_s8v2'
     # model = get_model('irvine2022wacv')().bottleneck_layer
     # model = get_model('baseline_vq8')(num_codes=1024).bottleneck_layer
     model = get_model(name)().bottleneck_layer
@@ -13,12 +13,13 @@ def test_encoder():
 
     model.eval()
 
-    shape = (3, 224, 224)
-    flops_benchmark(model, input_shape=shape)
-    device = torch.device('cpu')
-    # speed_benchmark(model, input_shapes=[shape], device=device, bs=1, N=2000)
-
     if True:
+    # if False:
+        shape = (3, 224, 224)
+        flops_benchmark(model, input_shape=shape)
+        device = torch.device('cpu')
+        # speed_benchmark(model, input_shapes=[shape], device=device, bs=1, N=2000)
+    else:
         from ptflops import get_model_complexity_info
         fpath = f'runs/{name}.txt'
         with open(fpath, 'w') as f:
