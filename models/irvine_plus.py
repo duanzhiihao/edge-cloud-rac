@@ -68,40 +68,50 @@ def s8_96z(num_classes=1000, bpp_lmb=1.28, teacher=True):
                              bottleneck_layer=bottleneck)
     return model
 
-# class ResBlockv2(nn.Module):
-#     def __init__(self, in_out, hidden=None):
-#         super().__init__()
-#         hidden = hidden or (in_out // 2)
-#         self.conv_1 = nn.Conv2d(in_out, hidden, kernel_size=1)
-#         self.conv_2 = nn.Conv2d(hidden, hidden, kernel_size=3, padding=1)
-#         self.conv_3 = nn.Conv2d(hidden, in_out, kernel_size=1)
 
-#     def forward(self, input):
-#         x = self.conv_1(tnf.gelu(input))
-#         x = self.conv_2(tnf.gelu(x))
-#         x = self.conv_3(tnf.gelu(x))
-#         out = input + x
-#         return out
+class ResBlockv2(nn.Module):
+    def __init__(self, in_out, hidden=None):
+        super().__init__()
+        hidden = hidden or (in_out // 2)
+        self.conv_1 = nn.Conv2d(in_out, hidden, kernel_size=1)
+        self.conv_2 = nn.Conv2d(hidden, in_out, kernel_size=3, padding=1)
 
-# class Bottleneck8v2(Bottleneck8):
-#     def __init__(self, hidden, zdim, num_target_channels=256):
-#         super().__init__(zdim, num_target_channels=num_target_channels)
-#         self.encoder = nn.Sequential(
-#             nn.Conv2d(3, hidden, kernel_size=8, stride=8, padding=0, bias=True),
-#             ResBlockv2(hidden),
-#             ResBlockv2(hidden),
-#             ResBlockv2(hidden),
-#             ResBlockv2(hidden),
-#             # nn.GELU(),
-#             nn.Conv2d(hidden, zdim, kernel_size=1, stride=1, padding=0),
-#         )
+    def forward(self, input):
+        x = self.conv_1(tnf.gelu(input))
+        x = self.conv_2(tnf.gelu(x))
+        out = input + x
+        return out
 
-# @register_model
-# def baseline_s8v2(num_classes=1000, bpp_lmb=1.28, teacher=True):
-#     zdim = 96
-#     model = BottleneckResNet(zdim=zdim, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
-#                              bottleneck_layer=Bottleneck8v2(128, zdim, 256))
-#     return model
+class Bottleneck8v2(InputBottleneck):
+    def __init__(self, hidden, zdim, num_target_channels=256):
+        super().__init__(zdim)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, hidden, kernel_size=8, stride=8, padding=0, bias=True),
+            ResBlockv2(hidden),
+            ResBlockv2(hidden),
+            ResBlockv2(hidden),
+            ResBlockv2(hidden),
+            # ResBlockv2(hidden),
+            # nn.GELU(),
+            nn.Conv2d(hidden, zdim, kernel_size=1, stride=1, padding=0),
+        )
+        self.decoder = nn.Sequential(
+            deconv(zdim, num_target_channels),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
+        )
+
+@register_model
+def s8v2(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    zdim = 64
+    bottleneck = Bottleneck8v2(hidden=160, zdim=zdim, num_target_channels=256)
+    model = BottleneckResNet(zdim=zdim, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=bottleneck)
+    return model
 
 
 class Bottleneck8small(InputBottleneck):

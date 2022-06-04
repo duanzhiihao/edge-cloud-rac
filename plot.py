@@ -66,6 +66,10 @@ results_all['ours_s8'] = {
     'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
     'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
 }
+results_all['ours_s8_small'] = {
+    'bpp': [0.09303, 0.1125, 0.1443, 0.1754, 0.2143, 0.3236, 0.4604, 0.7328, 1.222, 2.293],
+    'acc': [67.03, 68.19, 69.25, 69.85, 71.14, 72.63, 73.55, 74.72, 75.17, 75.27],
+}
 results_all['ours_s8_tiny'] = {
     'bpp': [0.1786, 0.2829, 0.4206, 0.5508, 0.7209, 1.178],
     'acc': [67.83, 70.69, 73.06, 73.84, 74.07, 74.64],
@@ -108,7 +112,7 @@ def plot_all():
     # jpeg_res50_wacv2022['bpp'] = [kb*1024*8 / (224*224) for kb in jpeg_res50_wacv2022['kbyte']]
     # plot(jpeg_res50_wacv2022['bpp'], jpeg_res50_wacv2022['acc'], label='JPEG dec. + ResNet-50 (Irvine)')
 
-    plot(results_all['webp']['bpp'], results_all['webp']['acc'], label='WebP, no fine-tune')
+    # plot(results_all['webp']['bpp'], results_all['webp']['acc'], label='WebP, no fine-tune')
     plot(results_all['webp']['bpp'], results_all['webp']['acc-ft'], label='WebP, fine-tune')
 
     results_all['ours_tcsvt'] = {
@@ -159,48 +163,40 @@ def plot_all():
          label='Ours s8')
     # plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x')
 
-    results_all['rate_acc'] = {
-        'bpp': [0.09303, 0.1125, 0.1443, 0.1754, 0.2143, 0.3236, 0.4604, 0.7328, 1.222, 2.293],
-        'acc': [67.03, 68.19, 69.25, 69.85, 71.14, 72.63, 73.55, 74.72, 75.17, 75.27],
-    }
-    plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Ours s8 small')
-    # plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x small')
+    # plot(results_all['ours_s8_small']['bpp'][2:], results_all['ours_s8_small']['acc'][2:],
+    #      label='Ours s8 small')
 
-    plot(results_all['ours_s8_tiny']['bpp'], results_all['ours_s8_tiny']['acc'],
-         label='Ours s8 tiny')
-    # plot(rate_acc['bpp'], rate_acc['acc'], label='Baseline w/ encoder 8x tiny')
+    # plot(results_all['ours_s8_tiny']['bpp'], results_all['ours_s8_tiny']['acc'],
+    #      label='Ours s8 tiny')
 
-    results_all['rate_acc'] = {
-        'bpp': [0.1532, 0.2359],
-        'acc': [68.25, 70.79],
-    }
+    plot([1.257,2.836], [74.8, 75.31],
+         label='s8 zdim=96')
+
+    # results_all['rate_acc'] = {
+    #     'bpp': [0.1532, 0.2359],
+    #     'acc': [68.25, 70.79],
+    # }
     # plot(rate_acc['bpp'], rate_acc['acc'], label='Ours s8 next')
-
-    results_all['rate_acc'] = {
-        'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
-        'acc': [65.01, 66.13, 67.99, 69.7, 71.98, 73.23],
-    }
+    # results_all['rate_acc'] = {
+    #     'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
+    #     'acc': [65.01, 66.13, 67.99, 69.7, 71.98, 73.23],
+    # }
     # plot(rate_acc['bpp'][1:], rate_acc['acc'][1:], label='Baseline w/ encoder 16x')
-
-    results_all['ours'] = {
-        'acc': [73.28, 75.22],
-        'bpp': [0.5347, 0.97605]
-    }
+    # results_all['ours'] = {
+    #     'acc': [73.28, 75.22],
+    #     'bpp': [0.5347, 0.97605]
+    # }
     # plot(ours['bpp'], ours['acc'], label='Baseline w/ mobilenet encoder')
 
-    results_all['ours'] = {
-        'acc': [72.74, 75.6],
-        'bpp': [0.6789, 1.456]
-    }
-    # plot(ours['bpp'], ours['acc'], label='Baseline w/ convnext encoder')
 
     plt.title('Rate-accuracy trade-off on ImageNet')
     plt.grid(True, alpha=0.32)
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
-    plt.xscale('log')
-    plt.xlim(0.13, 2.0)
-    plt.xticks([0.13, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8])
+    # plt.xscale('log')
+    # plt.xlim(0.13, 2.0)
+    # plt.xticks([0.13, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8])
+    plt.xlim(0, 1.2)
     ax1.get_xaxis().set_major_formatter(ScalarFormatter())
     # plt.yticks(list(range()))
     # plt.ylim(22, 42)
@@ -272,8 +268,8 @@ def post_processing(ax):
 
 
 if __name__ == '__main__':
-    # plot_all()
+    plot_all()
     # plot_ablation()
-    plot_webp()
-    plot_medium()
+    # plot_webp()
+    # plot_medium()
     plt.show()
