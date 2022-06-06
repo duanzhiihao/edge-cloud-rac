@@ -131,6 +131,7 @@ class BottleneckResNet(nn.Module):
             self.layer2.eval()
             self.layer3.eval()
             self.layer4.eval()
+            self.fc.eval()
             if self._teacher is not None:
                 self._teacher.eval()
         return self
