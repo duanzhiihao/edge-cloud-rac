@@ -75,8 +75,8 @@ results_all['ours_s8_tiny'] = {
     'acc': [67.83, 70.69, 73.06, 73.84, 74.07, 74.64],
 }
 results_all['ours_s8_tiny_enc'] = {
-    'bpp': [0.258, 0.4026, 0.5432, 0.7719, 1.106],
-    'acc': [66.60, 69.89, 70.78, 73.21, 73.35],
+    'bpp': [0.2154, 0.258, 0.4026, 0.5432, 0.7719, 1.106, 1.689],
+    'acc': [64.53, 66.60, 69.89, 70.78, 73.21, 73.35, 74.48],
 }
 
 
@@ -166,11 +166,12 @@ def plot_all():
     # plot(results_all['ours_s8_small']['bpp'][2:], results_all['ours_s8_small']['acc'][2:],
     #      label='Ours s8 small')
 
-    # plot(results_all['ours_s8_tiny']['bpp'], results_all['ours_s8_tiny']['acc'],
-    #      label='Ours s8 tiny')
+    plot(results_all['ours_s8_tiny']['bpp'], results_all['ours_s8_tiny']['acc'],
+         label='Ours s8 tiny')
 
-    plot([1.257,2.836], [74.8, 75.31],
-         label='s8 zdim=96')
+    # plot([1.257,2.836], [74.8, 75.31], label='s8 zdim=96')
+    # plot([0.2151, 0.3228, 0.453, 0.6841, 1.15], [71.23, 72.63, 73.7, 74.53, 75.09],
+    #      label='s8v2 hidden=160')
 
     # results_all['rate_acc'] = {
     #     'bpp': [0.1532, 0.2359],
@@ -193,10 +194,12 @@ def plot_all():
     plt.grid(True, alpha=0.32)
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
-    # plt.xscale('log')
-    # plt.xlim(0.13, 2.0)
+    plt.xscale('log')
+    xticks = [0.13, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2]
     # plt.xticks([0.13, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8])
-    plt.xlim(0, 1.2)
+    plt.xticks(xticks)
+    plt.xlim(min(xticks), max(xticks))
+    # plt.xlim(0, 1.2)
     ax1.get_xaxis().set_major_formatter(ScalarFormatter())
     # plt.yticks(list(range()))
     # plt.ylim(22, 42)
@@ -257,9 +260,12 @@ def post_processing(ax):
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     plt.xscale('log')
-    plt.xlim(0.1, 2.0)
-    plt.xticks([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8])
+    x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
+    # x_ticks = [i/10 for i in range(12)]
+    plt.xlim(min(x_ticks), max(x_ticks))
+    plt.xticks(x_ticks)
     ax.get_xaxis().set_major_formatter(ScalarFormatter())
+    plt.ylim(50, 76)
     # plt.yticks(list(range()))
     plt.ylabel('Top-1 acc.', fontdict=default_font)
     # plt.title('Rate-distortion curves')
