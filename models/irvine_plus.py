@@ -64,6 +64,13 @@ def s8m(num_classes=1000, bpp_lmb=1.28, teacher=True):
     return model
 
 @register_model
+def s8m_enc(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    bottleneck = Bottleneck8(hidden=128, zdim=64, num_target_channels=256, n_blocks=4)
+    model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=bottleneck, mode='encoder')
+    return model
+
+@register_model
 def s8s(num_classes=1000, bpp_lmb=1.28, teacher=True):
     bottleneck = Bottleneck8(hidden=128, zdim=64, num_target_channels=256, n_blocks=2)
     model = BottleneckResNet(zdim=64, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
