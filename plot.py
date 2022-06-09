@@ -62,23 +62,25 @@ results_all['wacv2022_my'] = {
     'bpp': [0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
 }
 # -------------------------------- Ours, s8 --------------------------------
+# lambda = [5.12, 3.84, 2.56, 1.28, 0.64, 0.32, 0.16, 0.08, 0.06]
 results_all['ours_s8'] = {
-    'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
-    'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
+    # 'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
+    # 'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
+    'bpp': [0.1102, 0.162, 0.2124, 0.3188, 0.442, 0.7213, 1.194, 1.576, 2.295],
+    'acc': [68.77, 70.6, 71.53, 72.93, 73.64, 74.88, 75.1, 75.18, 75.32],
 }
 results_all['ours_s8_small'] = {
     'bpp': [0.09303, 0.1125, 0.1443, 0.1754, 0.2143, 0.3236, 0.4604, 0.7328, 1.222, 2.293],
     'acc': [67.03, 68.19, 69.25, 69.85, 71.14, 72.63, 73.55, 74.72, 75.17, 75.27],
 }
 results_all['ours_s8_tiny'] = {
-    'bpp': [0.1786, 0.2829, 0.4206, 0.5508, 0.7209, 1.178],
-    'acc': [67.83, 70.69, 73.06, 73.84, 74.07, 74.64],
+    'bpp': [0.1117, 0.1372, 0.1786, 0.2829, 0.4206, 0.5508, 0.7209, 1.178, 1.747],
+    'acc': [61.99, 63.95, 67.83, 70.69, 73.06, 73.84, 74.07, 74.64, 74.93],
 }
 results_all['ours_s8_tiny_enc'] = {
     'bpp': [0.2154, 0.258, 0.4026, 0.5432, 0.7719, 1.106, 1.689],
     'acc': [64.53, 66.60, 69.89, 70.78, 73.21, 73.35, 74.48],
 }
-
 
 
 def plot(x, y, label, ls='-', ax=None):
@@ -242,7 +244,7 @@ def plot_webp():
 def plot_medium():
     fig1, ax = plt.subplots(figsize=(5,5))
 
-    plot(results_all['ours_s8']['bpp'][2:], results_all['ours_s8']['acc'][2:],
+    plot(results_all['ours_s8']['bpp'], results_all['ours_s8']['acc'],
          label='Ours')
     # plot(results_all['ours_s8_tiny_enc']['bpp'], results_all['ours_s8_tiny_enc']['acc'],
     #      label='Ours, encoder only')
@@ -260,7 +262,7 @@ def post_processing(ax):
     plt.legend(loc='best')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     plt.xscale('log')
-    x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
+    x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7, 2.0]
     # x_ticks = [i/10 for i in range(12)]
     plt.xlim(min(x_ticks), max(x_ticks))
     plt.xticks(x_ticks)
@@ -274,8 +276,8 @@ def post_processing(ax):
 
 
 if __name__ == '__main__':
-    plot_all()
+    # plot_all()
     # plot_ablation()
-    # plot_webp()
-    # plot_medium()
+    plot_webp()
+    plot_medium()
     plt.show()
