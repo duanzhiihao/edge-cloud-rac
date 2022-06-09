@@ -17,10 +17,10 @@ results_all['jpeg_res50'] = {
     'acc': [72.57, 71.27, 67.71, 60.58],
     'bpp': [0.6030, 0.4682, 0.3107, 0.2236]
 }
-results_all['jpeg_res50_wacv2022'] = {
-    'acc': [None, None, 50, 64, 68, 69.6, 71, 72, 72.6, 73.4],
-    'kbyte': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
-}
+# results_all['jpeg_res50_wacv2022'] = {
+#     'acc': [None, None, 50, 64, 68, 69.6, 71, 72, 72.6, 73.4],
+#     'kbyte': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+# }
 # results_all['jpeg_mobilev3'] = {
 #     'acc': [0.6623, 0.711, 0.7325, 0.7385, 0.7409],
 #     'bpp': [0.22366, 0.31079, 0.46838, 0.60333, 0.66786]
@@ -32,19 +32,19 @@ results_all['webp'] = {
     'acc-ft': [68.06, 71.01, 72.41, 73.95, 75.25, 75.74, None],
 }
 # -------------------------------- VQ --------------------------------
-results_all['vq-x4'] = {
-    'acc': [71.07, 71.96, 72.85],
-    'bpp': [0.2883, 0.3467, 0.4636]
-}
-results_all['vq-x8'] = {
-    'acc': [69.59, 69.18],
-    'bpp': [0.1366, 0.168]
-}
+# results_all['vq-x4'] = {
+#     'acc': [71.07, 71.96, 72.85],
+#     'bpp': [0.2883, 0.3467, 0.4636]
+# }
+# results_all['vq-x8'] = {
+#     'acc': [69.59, 69.18],
+#     'bpp': [0.1366, 0.168]
+# }
 # -------------------------------- Irvine 2022 WACV --------------------------------
-results_all['wacv2022_paper'] = {
-    'acc': [57.5, 71, 73, 74.5, 74.8, 75, 75.2, 75.4, 75.6, 75.8],
-    'kbyte': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
-}
+# results_all['wacv2022_paper'] = {
+#     'acc': [57.5, 71, 73, 74.5, 74.8, 75, 75.2, 75.4, 75.6, 75.8],
+#     'kbyte': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+# }
 # wacv2022_paper['bpp'] = [kb*1024*8 / (224*224) for kb in wacv2022_paper['kbyte']]
 results_all['wacv2022_code'] = {
     'acc': [0.5737,    0.71608,  0.74226,  0.75096,  0.75314,  0.75632,  0.75928,  0.75916],
@@ -63,7 +63,7 @@ results_all['wacv2022_my'] = {
 }
 # -------------------------------- Ours, s8 --------------------------------
 # lambda = [5.12, 3.84, 2.56, 1.28, 0.64, 0.32, 0.16, 0.08, 0.06]
-results_all['ours_s8'] = {
+results_all['ours_s8_medium'] = {
     # 'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
     # 'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
     'bpp': [0.1102, 0.162, 0.2124, 0.3188, 0.442, 0.7213, 1.194, 1.576, 2.295],
@@ -78,16 +78,43 @@ results_all['ours_s8_tiny'] = {
     'acc': [61.99, 63.95, 67.83, 70.69, 73.06, 73.84, 74.07, 74.64, 74.93],
 }
 results_all['ours_s8_tiny_enc'] = {
-    'bpp': [0.2154, 0.258, 0.4026, 0.5432, 0.7719, 1.106, 1.689],
-    'acc': [64.53, 66.60, 69.89, 70.78, 73.21, 73.35, 74.48],
+    'bpp': [0.1216, 0.1596, 0.2154, 0.258, 0.4026, 0.5432, 0.7719, 1.106, 1.689],
+    'acc': [45.04, 55.28, 64.53, 66.60, 69.89, 70.78, 73.21, 73.35, 74.48],
 }
 
+cmap = plt.get_cmap('tab10')
+N = 10
+color_cycle = [cmap(i*(1/N)) for i in range(N)]
+# color_cycle[0], color_cycle[2] = color_cycle[2], color_cycle[0]
 
-def plot(x, y, label, ls='-', ax=None):
+for i, key in enumerate([
+    'ours_s8_tiny', 'ours_s8_small', 'ours_s8_medium',
+    'webp', 'wacv2022_code'
+]):
+    results_all[key]['color'] = color_cycle[i]
+    results_all[key]['linestyle'] = '--'
+for i, key in enumerate([
+    'ours_s8_tiny_enc',
+]):
+    results_all[key]['color'] = color_cycle[i]
+    results_all[key]['linestyle'] = '-'
+for i, key in enumerate([
+    'webp',
+]):
+    results_all[key]['linestyle'] = '-'
+
+
+def plot(stat, label, ax=None):
+    x = stat['bpp']
+    y = stat['acc']
+    c = stat['color']
+    ls = stat['linestyle']
     module = ax if ax is not None else plt
     p = module.plot(x, y, label=label,
-                 marker='.', markersize=10,
-                 linestyle=ls, linewidth=1.6)
+        marker='.', markersize=10,
+        linestyle=ls, linewidth=1.6,
+        color=c
+    )
     return p
 
 
@@ -161,8 +188,7 @@ def plot_all():
 
     # plot(vq['bpp'], vq['acc'], label='Baseline w/ VQ x8')
 
-    plot(results_all['ours_s8']['bpp'][2:], results_all['ours_s8']['acc'][2:],
-         label='Ours s8')
+    plot(results_all['ours_s8_medium']['bpp'], label='Ours s8')
     # plot(rate_acc['bpp'][2:], rate_acc['acc'][2:], label='Baseline w/ encoder 8x')
 
     # plot(results_all['ours_s8_small']['bpp'][2:], results_all['ours_s8_small']['acc'][2:],
@@ -214,14 +240,10 @@ def plot_all():
 def plot_ablation():
     fig1, ax = plt.subplots(figsize=(6,4))
 
-    plot(results_all['wacv2022_code']['bpp'], results_all['wacv2022_code']['acc'],
-         label='Entropic Student (baseline)')
-    plot(results_all['wacv2022_my']['bpp'], results_all['wacv2022_my']['acc'],
-         label='A: single-stage training')
-    plot([5], [70],
-         label='B: residual networks')
-    plot(results_all['ours_s8']['bpp'][2:], results_all['ours_s8']['acc'][2:],
-         label='C: 8x downsampling')
+    plot(results_all['wacv2022_code'],  label='Entropic Student (baseline)')
+    plot(results_all['wacv2022_my'],    label='A: single-stage training')
+    plot([5], [70],                     label='B: residual networks')
+    plot(results_all['ours_s8_medium'], label='C: 8x downsampling')
     post_processing(ax)
     plt.ylim(56, 76)
 
@@ -229,12 +251,9 @@ def plot_ablation():
 def plot_webp():
     fig1, ax = plt.subplots(figsize=(5,5))
 
-    plot(results_all['ours_s8_tiny']['bpp'], results_all['ours_s8_tiny']['acc'],
-         label='Ours-t')
-    plot(results_all['ours_s8_tiny_enc']['bpp'], results_all['ours_s8_tiny_enc']['acc'],
-         label='Ours-t, encoder only')
-    plot(results_all['webp']['bpp'], results_all['webp']['acc'],
-         label='Image compression by WebP')
+    plot(results_all['ours_s8_tiny'],       label='Feature coding - Ours-T, joint')
+    plot(results_all['ours_s8_tiny_enc'],   label='Feature coding - Ours-T')
+    plot(results_all['webp'],               label='Image coding - WebP')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -244,12 +263,8 @@ def plot_webp():
 def plot_medium():
     fig1, ax = plt.subplots(figsize=(5,5))
 
-    plot(results_all['ours_s8']['bpp'], results_all['ours_s8']['acc'],
-         label='Ours')
-    # plot(results_all['ours_s8_tiny_enc']['bpp'], results_all['ours_s8_tiny_enc']['acc'],
-    #      label='Ours, encoder only')
-    plot(results_all['wacv2022_code']['bpp'], results_all['wacv2022_code']['acc'],
-         label='Entropic Student')
+    plot(results_all['ours_s8_medium'], label='Feature coding - Ours-M (joint)')
+    plot(results_all['wacv2022_code'],  label='Feature coding - Entropic Student (joint)')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -259,7 +274,7 @@ def plot_medium():
 def post_processing(ax):
     plt.title('Rate-accuracy trade-off on ImageNet')
     plt.grid(True, alpha=0.32)
-    plt.legend(loc='best')
+    plt.legend(loc='lower right')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     plt.xscale('log')
     x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7, 2.0]
