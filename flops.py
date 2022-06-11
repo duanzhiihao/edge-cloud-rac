@@ -5,7 +5,7 @@ from models.registry import get_model
 
 
 def test_encoder():
-    name = 's8v2'
+    name = 's4_ablation'
     # model = get_model('irvine2022wacv')().bottleneck_layer
     # model = get_model('baseline_vq8')(num_codes=1024).bottleneck_layer
     model = get_model(name)().bottleneck_layer

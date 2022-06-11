@@ -33,6 +33,36 @@ class ResBlock(nn.Module):
         out = input + x
         return out
 
+
+class Bottleneck4(InputBottleneck):
+    def __init__(self, hidden, zdim, num_target_channels=256, n_blocks=4):
+        super().__init__(zdim)
+        if n_blocks > 0:
+            modules = [ResBlock(hidden) for _ in range(n_blocks)]
+        else:
+            modules = [nn.GELU()]
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, hidden, kernel_size=4, stride=4, padding=0, bias=True),
+            *modules,
+            nn.Conv2d(hidden, zdim, kernel_size=1, stride=1, padding=0),
+        )
+        self.decoder = nn.Sequential(
+            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.GELU(),
+            nn.Conv2d(num_target_channels, num_target_channels, kernel_size=1, stride=1, padding=0, bias=True)
+        )
+
+@register_model
+def s4_ablation(num_classes=1000, bpp_lmb=1.28, teacher=True):
+    bottleneck = Bottleneck4(hidden=72, zdim=24, num_target_channels=256, n_blocks=3)
+    model = BottleneckResNet(zdim=24, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
+                             bottleneck_layer=bottleneck)
+    return model
+
+
 class Bottleneck8(InputBottleneck):
     def __init__(self, hidden, zdim, num_target_channels=256, n_blocks=4):
         super().__init__(zdim)
