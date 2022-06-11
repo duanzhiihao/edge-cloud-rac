@@ -48,7 +48,7 @@ class Bottleneck4(InputBottleneck):
             nn.Conv2d(hidden, zdim, kernel_size=1, stride=1, padding=0),
         )
         self.decoder = nn.Sequential(
-            nn.Conv2d(num_target_channels, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.Conv2d(zdim, num_target_channels * 2, kernel_size=3, stride=1, padding=1, bias=True),
             nn.GELU(),
             nn.Conv2d(num_target_channels * 2, num_target_channels, kernel_size=3, stride=1, padding=1, bias=True),
             nn.GELU(),
