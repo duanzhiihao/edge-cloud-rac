@@ -56,7 +56,7 @@ class Bottleneck4(InputBottleneck):
         )
 
 @register_model
-def s4_ablation(num_classes=1000, bpp_lmb=1.28, teacher=True):
+def s4res(num_classes=1000, bpp_lmb=1.28, teacher=True):
     bottleneck = Bottleneck4(hidden=72, zdim=24, num_target_channels=256, n_blocks=3)
     model = BottleneckResNet(zdim=24, num_classes=num_classes, bpp_lmb=bpp_lmb, teacher=teacher,
                              bottleneck_layer=bottleneck)
