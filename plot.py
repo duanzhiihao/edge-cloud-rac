@@ -53,13 +53,17 @@ results_all['wacv2022_code'] = {
 }
 results_all['wacv2022_code']['acc'] = [f*100 for f in results_all['wacv2022_code']['acc']]
 # -------------------------------- my implementation --------------------------------
-results_all['wacv2022_my_v1'] = {
-    'acc': [71.42, 73.36, 74.66],
-    'bpp': [0.3237, 0.5818, 0.8305]
-}
+# results_all['wacv2022_my_v1'] = {
+#     'acc': [71.42, 73.36, 74.66],
+#     'bpp': [0.3237, 0.5818, 0.8305]
+# }
 results_all['wacv2022_my'] = {
     'acc': [67.95, 70.9, 72.6, 74.03, 74.75, 76.21],
     'bpp': [0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
+}
+results_all['wacv2022_my_res'] = {
+    'acc': [6],
+    'bpp': [0.2]
 }
 # -------------------------------- Ours, s8 --------------------------------
 # lambda = [5.12, 3.84, 2.56, 1.28, 0.64, 0.32, 0.16, 0.08, 0.06]
@@ -103,6 +107,15 @@ for i, key in enumerate([
 ]):
     results_all[key]['linestyle'] = '-'
 
+
+def simple_plot(stat, label, ax=None):
+    x = stat['bpp']
+    y = stat['acc']
+    module = ax if ax is not None else plt
+    p = module.plot(x, y, label=label,
+        marker='.', markersize=10, linewidth=1.6,
+    )
+    return p
 
 def plot(stat, label, ax=None):
     x = stat['bpp']
@@ -238,14 +251,19 @@ def plot_all():
 
 
 def plot_ablation():
-    fig1, ax = plt.subplots(figsize=(6,4))
+    fig1, ax = plt.subplots(figsize=(5,4))
 
-    plot(results_all['wacv2022_code'],  label='Entropic Student (baseline)')
-    plot(results_all['wacv2022_my'],    label='A: single-stage training')
-    plot([5], [70],                     label='B: residual networks')
-    plot(results_all['ours_s8_medium'], label='C: 8x downsampling')
+    simple_plot(results_all['wacv2022_code'],  label='Baseline: Entropic Student')
+    simple_plot(results_all['wacv2022_my'],    label='Ours A: Baseline + single-stage training')
+    simple_plot(results_all['wacv2022_my_res'],label='Ours B: A + residual networks')
+    simple_plot(results_all['ours_s8_medium'], label='Ours C: B + 8x downsampling')
     post_processing(ax)
     plt.ylim(56, 76)
+    x_ticks = [i/10 for i in range(1, 11)]
+    plt.xticks(x_ticks)
+    plt.xlim(min(x_ticks), max(x_ticks))
+    plt.subplots_adjust(left=0.14, bottom=0.12, right=0.98, top=0.94)
+    plt.savefig(fig_save_root / 'method-ablation.pdf')
 
 
 def plot_webp():
@@ -276,7 +294,7 @@ def post_processing(ax):
     plt.grid(True, alpha=0.32)
     plt.legend(loc='lower right')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
-    plt.xscale('log')
+    # plt.xscale('log')
     x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7, 2.0]
     # x_ticks = [i/10 for i in range(12)]
     plt.xlim(min(x_ticks), max(x_ticks))
@@ -292,7 +310,7 @@ def post_processing(ax):
 
 if __name__ == '__main__':
     # plot_all()
-    # plot_ablation()
-    plot_webp()
-    plot_medium()
+    plot_ablation()
+    # plot_webp()
+    # plot_medium()
     plt.show()
