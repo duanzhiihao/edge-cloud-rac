@@ -58,12 +58,14 @@ results_all['wacv2022_code']['acc'] = [f*100 for f in results_all['wacv2022_code
 #     'bpp': [0.3237, 0.5818, 0.8305]
 # }
 results_all['wacv2022_my'] = {
-    'acc': [67.95, 70.9, 72.6, 74.03, 74.75, 76.21],
-    'bpp': [0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
+    'acc': [57.48, 67.95, 70.9, 72.6, 74.03, 74.75, 76.21],
+    'bpp': [0.1339, 0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
 }
 results_all['wacv2022_my_res'] = {
-    'acc': [6],
-    'bpp': [0.2]
+    # 'acc': [48.34,   63.66,  68.46,  71.77,  74.02,  75.07, ],
+    # 'bpp': [0.09541, 0.1586, 0.2393, 0.3798, 0.5382, 0.7771]
+    'acc': [63.66,  68.46,  71.77,  74.02,  75.07, 75.87],
+    'bpp': [0.1586, 0.2393, 0.3798, 0.5382, 0.7771, 1.135]
 }
 # -------------------------------- Ours, s8 --------------------------------
 # lambda = [5.12, 3.84, 2.56, 1.28, 0.64, 0.32, 0.16, 0.08, 0.06]
@@ -253,10 +255,10 @@ def plot_all():
 def plot_ablation():
     fig1, ax = plt.subplots(figsize=(5,4))
 
-    simple_plot(results_all['wacv2022_code'],  label='Baseline: Entropic Student')
-    simple_plot(results_all['wacv2022_my'],    label='Ours A: Baseline + single-stage training')
-    simple_plot(results_all['wacv2022_my_res'],label='Ours B: A + residual networks')
     simple_plot(results_all['ours_s8_medium'], label='Ours C: B + 8x downsampling')
+    simple_plot(results_all['wacv2022_my_res'],label='Ours B: A + residual networks')
+    simple_plot(results_all['wacv2022_my'],    label='Ours A: Baseline + single-stage training')
+    simple_plot(results_all['wacv2022_code'],  label='Baseline: Entropic Student')
     post_processing(ax)
     plt.ylim(56, 76)
     x_ticks = [i/10 for i in range(1, 11)]
