@@ -2,6 +2,7 @@ from pathlib import Path
 from matplotlib.ticker import ScalarFormatter
 import matplotlib.pyplot as plt
 
+from bdacc import bd_accuracy
 
 fig_save_root = Path('C:/Users/duanz/OneDrive/My_papers/2022-PCS-Mobile-Cloud/exp')
 
@@ -31,6 +32,13 @@ results_all['webp'] = {
     'acc': [46.67, 56.37, 61.34, 67.39, 70.546, 72.138, 73.956],
     'acc-ft': [68.06, 71.01, 72.41, 73.95, 75.25, 75.74, None],
 }
+results_all['bpg_m4'] = {
+    'bpp': [1.8966258035714243, 1.561381466836737, 1.260887152423471, 1.0115305357142876,
+            0.8099806568877541, 0.63361236607143, 0.4914271301020401, 0.38052897959183657,
+            0.18967987563775518, 0.0910806345663269],
+    'acc': [0.75332, 0.75086, 0.74502, 0.73518, 0.7244, 0.70818, 0.68692, 0.65518, 0.52974, 0.32936],
+}
+results_all['bpg_m4']['acc'] = [f*100 for f in results_all['bpg_m4']['acc']]
 # -------------------------------- VQ --------------------------------
 # results_all['vq-x4'] = {
 #     'acc': [71.07, 71.96, 72.85],
@@ -47,9 +55,12 @@ results_all['webp'] = {
 # }
 # wacv2022_paper['bpp'] = [kb*1024*8 / (224*224) for kb in wacv2022_paper['kbyte']]
 results_all['wacv2022_code'] = {
-    'acc': [0.5737,    0.71608,  0.74226,  0.75096,  0.75314,  0.75632,  0.75928,  0.75916],
-    'bpp': [0.1465677, 0.330722, 0.595901, 0.886827, 1.311912, 1.831621, 2.592045, 3.653037],
-    'beta': [1.28,     0.64,     0.32,     0.16,     0.08,     0.04,     0.02,     0.01]
+    # 'acc': [0.5737,    0.71608,  0.74226,  0.75096,  0.75314,  0.75632,  0.75928,  0.75916],
+    # 'bpp': [0.1465677, 0.330722, 0.595901, 0.886827, 1.311912, 1.831621, 2.592045, 3.653037],
+    'acc': [0.5737,    0.71608,  0.74226,  0.75096,  0.75314],
+    'bpp': [0.1465677, 0.330722, 0.595901, 0.886827, 1.311912],
+    'beta': [1.28,     0.64,     0.32,     0.16,     0.08,     0.04,     0.02,     0.01],
+    'name': 'irvine2022wacv'
 }
 results_all['wacv2022_code']['acc'] = [f*100 for f in results_all['wacv2022_code']['acc']]
 # -------------------------------- my implementation --------------------------------
@@ -59,21 +70,32 @@ results_all['wacv2022_code']['acc'] = [f*100 for f in results_all['wacv2022_code
 # }
 results_all['wacv2022_my'] = {
     'acc': [57.48, 67.95, 70.9, 72.6, 74.03, 74.75, 76.21],
-    'bpp': [0.1339, 0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267]
+    'bpp': [0.1339, 0.2204, 0.2761, 0.4072, 0.5741, 0.8367, 3.267],
+    'name': 'ours-s4-baseline'
 }
 results_all['wacv2022_my_res'] = {
     # 'acc': [48.34,   63.66,  68.46,  71.77,  74.02,  75.07, ],
     # 'bpp': [0.09541, 0.1586, 0.2393, 0.3798, 0.5382, 0.7771]
     'acc': [63.66,  68.46,  71.77,  74.02,  75.07, 75.87],
-    'bpp': [0.1586, 0.2393, 0.3798, 0.5382, 0.7771, 1.135]
+    'bpp': [0.1586, 0.2393, 0.3798, 0.5382, 0.7771, 1.135],
+    'name': 'ours-s4-res'
 }
 # -------------------------------- Ours, s8 --------------------------------
 # lambda = [5.12, 3.84, 2.56, 1.28, 0.64, 0.32, 0.16, 0.08, 0.06]
+results_all['ours_s8_l_enc'] = {
+    'bpp': [0.1109, 0.1855, 0.2853, 0.4034, 0.5478, 0.818, 1.312],
+    'acc': [65.54, 69.65, 71.18, 72.15, 72.41, 73.68, 74.11],
+}
 results_all['ours_s8_medium'] = {
-    # 'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
-    # 'acc': [67.27, 69.27, 68.52, 69.99, 71.53, 72.93, 73.64, 74.88, 75.1],
-    'bpp': [0.1102, 0.162, 0.2124, 0.3188, 0.442, 0.7213, 1.194, 1.576, 2.295],
-    'acc': [68.77, 70.6, 71.53, 72.93, 73.64, 74.88, 75.1, 75.18, 75.32],
+    # 'bpp': [0.09236, 0.1098, 0.1489, 0.1745, 0.2124, 0.3188, 0.442, 0.7213, 1.194, 1.576, 2.295],
+    # 'acc': [67.27,   69.27,  68.52,  69.99,  71.53,  72.93,  73.64, 74.88, 75.1, 75.18, 75.32],
+    'bpp': [0.1102, 0.162, 0.2124, 0.3188, 0.442, 0.7213, 1.194],
+    'acc': [68.77, 70.6, 71.53, 72.93, 73.64, 74.88, 75.1],
+    'name': 'ours-m'
+}
+results_all['ours_s8_m_enc'] = {
+    'bpp': [0.1109, 0.1779, 0.2696, 0.4023, 0.5909, 0.8472, 1.452],
+    'acc': [65.16,  68.43,  71.35,  71.46,  72.84,  73.47,  74.07],
 }
 results_all['ours_s8_small'] = {
     'bpp': [0.09303, 0.1125, 0.1443, 0.1754, 0.2143, 0.3236, 0.4604, 0.7328, 1.222, 2.293],
@@ -87,6 +109,12 @@ results_all['ours_s8_tiny_enc'] = {
     'bpp': [0.1216, 0.1596, 0.2154, 0.258, 0.4026, 0.5432, 0.7719, 1.106, 1.689],
     'acc': [45.04, 55.28, 64.53, 66.60, 69.89, 70.78, 73.21, 73.35, 74.48],
 }
+# -------------------------------- Ours, s16 --------------------------------
+results_all['ours_s16'] = {
+    'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
+    'acc': [65.01, 66.13, 67.99, 69.7, 71.98, 73.23],
+}
+
 
 cmap = plt.get_cmap('tab10')
 N = 10
@@ -94,18 +122,18 @@ color_cycle = [cmap(i*(1/N)) for i in range(N)]
 # color_cycle[0], color_cycle[2] = color_cycle[2], color_cycle[0]
 
 for i, key in enumerate([
-    'ours_s8_tiny', 'ours_s8_small', 'ours_s8_medium',
-    'webp', 'wacv2022_code'
+    'ours_s8_tiny', 'ours_s8_medium',
+    'webp', 'wacv2022_code', 'bpg_m4'
 ]):
     results_all[key]['color'] = color_cycle[i]
     results_all[key]['linestyle'] = '--'
 for i, key in enumerate([
-    'ours_s8_tiny_enc',
+    'ours_s8_tiny_enc', 'ours_s8_m_enc', 'ours_s8_l_enc'
 ]):
     results_all[key]['color'] = color_cycle[i]
     results_all[key]['linestyle'] = '-'
 for i, key in enumerate([
-    'webp',
+    'webp', 'bpg_m4'
 ]):
     results_all[key]['linestyle'] = '-'
 
@@ -221,10 +249,6 @@ def plot_all():
     #     'acc': [68.25, 70.79],
     # }
     # plot(rate_acc['bpp'], rate_acc['acc'], label='Ours s8 next')
-    # results_all['rate_acc'] = {
-    #     'bpp': [0.1138, 0.1492, 0.1797, 0.242, 0.3843, 0.6799],
-    #     'acc': [65.01, 66.13, 67.99, 69.7, 71.98, 73.23],
-    # }
     # plot(rate_acc['bpp'][1:], rate_acc['acc'][1:], label='Baseline w/ encoder 16x')
     # results_all['ours'] = {
     #     'acc': [73.28, 75.22],
@@ -256,24 +280,33 @@ def plot_ablation():
     fig1, ax = plt.subplots(figsize=(5,4))
 
     simple_plot(results_all['ours_s8_medium'], label='Ours C: B + 8x downsampling')
-    simple_plot(results_all['wacv2022_my_res'],label='Ours B: A + residual networks')
+    simple_plot(results_all['wacv2022_my_res'],label='Ours B: A + improved architecture')
     simple_plot(results_all['wacv2022_my'],    label='Ours A: Baseline + single-stage training')
     simple_plot(results_all['wacv2022_code'],  label='Baseline: Entropic Student')
     post_processing(ax)
     plt.ylim(56, 76)
-    x_ticks = [i/10 for i in range(1, 11)]
+    x_ticks = [i/10 for i in range(1, 13)]
     plt.xticks(x_ticks)
     plt.xlim(min(x_ticks), max(x_ticks))
     plt.subplots_adjust(left=0.14, bottom=0.12, right=0.98, top=0.94)
     plt.savefig(fig_save_root / 'method-ablation.pdf')
 
+    bd = bd_accuracy(results_all['wacv2022_code'], results_all['wacv2022_my'], visualize=True)
+    print(bd)
+    bd = bd_accuracy(results_all['wacv2022_code'], results_all['wacv2022_my_res'], visualize=True)
+    print(bd)
+    bd = bd_accuracy(results_all['wacv2022_code'], results_all['ours_s8_medium'], visualize=True)
+    print(bd)
+    bd = bd_accuracy(results_all['ours_s8_medium'], results_all['ours_s16'], visualize=True)
+    print(bd)
+
 
 def plot_webp():
     fig1, ax = plt.subplots(figsize=(5,5))
 
-    plot(results_all['ours_s8_tiny'],       label='Feature coding - Ours-T, joint')
-    plot(results_all['ours_s8_tiny_enc'],   label='Feature coding - Ours-T')
-    plot(results_all['webp'],               label='Image coding - WebP')
+    plot(results_all['ours_s8_tiny'],       label='Feature coding - Ours, $N=0$ (joint)')
+    plot(results_all['ours_s8_tiny_enc'],   label='Feature coding - Ours, $N=0$')
+    plot(results_all['webp'],               label='Image coding - WebP, speed=4')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -283,12 +316,25 @@ def plot_webp():
 def plot_medium():
     fig1, ax = plt.subplots(figsize=(5,5))
 
-    plot(results_all['ours_s8_medium'], label='Feature coding - Ours-M (joint)')
+    plot(results_all['ours_s8_medium'], label='Feature coding - Ours, $N=4$ (joint)')
+    plot(results_all['ours_s8_m_enc'],  label='Feature coding - Ours, $N=4$')
     plot(results_all['wacv2022_code'],  label='Feature coding - Entropic Student (joint)')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
     plt.savefig(fig_save_root / 'medium.pdf')
+
+
+def plot_high():
+    fig1, ax = plt.subplots(figsize=(5,5))
+
+    # plot(results_all['ours_s8_medium'], label='Feature coding - Ours, $N=4$ (joint)')
+    plot(results_all['ours_s8_l_enc'],  label='Feature coding - Ours, $N=8$')
+    plot(results_all['bpg_m4'],  label='Image coding - BPG YCbCr 444, speed=4')
+    post_processing(ax)
+    # plt.ylim()
+    plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
+    plt.savefig(fig_save_root / 'high.pdf')
 
 
 def post_processing(ax):
@@ -297,14 +343,14 @@ def post_processing(ax):
     plt.legend(loc='lower right')
     plt.xlabel('Bits per pixel (bpp)', fontdict=default_font)
     # plt.xscale('log')
-    x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7, 2.0]
-    # x_ticks = [i/10 for i in range(12)]
+    # x_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7, 2.0]
+    x_ticks = [(i+1)/10 for i in range(12)]
     plt.xlim(min(x_ticks), max(x_ticks))
     plt.xticks(x_ticks)
     ax.get_xaxis().set_major_formatter(ScalarFormatter())
     plt.ylim(50, 76)
     # plt.yticks(list(range()))
-    plt.ylabel('Top-1 acc.', fontdict=default_font)
+    plt.ylabel('Top-1 acc. (%)', fontdict=default_font)
     # plt.title('Rate-distortion curves')
     plt.subplots_adjust(left=0.12, bottom=0.12, right=0.98, top=0.94)
 
@@ -312,7 +358,8 @@ def post_processing(ax):
 
 if __name__ == '__main__':
     # plot_all()
-    plot_ablation()
-    # plot_webp()
-    # plot_medium()
+    # plot_ablation()
+    plot_webp()
+    plot_medium()
+    plot_high()
     plt.show()
