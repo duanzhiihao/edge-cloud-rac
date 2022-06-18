@@ -21,7 +21,7 @@ def read_and_preprocess_im(impath, crop_size=224):
 
 def speedtest_pil(img_format, **kwargs):
     img_dir = IMAGENET_DIR / 'val'
-    img_paths = list(img_dir.rglob('*.*'))[:2000]
+    img_paths = list(img_dir.rglob('*.*'))[:5000]
     encode_time = 0.0
     for impath in tqdm(img_paths):
         impath = str(impath)
@@ -64,7 +64,7 @@ def speedtest_bpg(quality, level=8):
     bits_path = 'runs/tmp.bpg'
 
     img_dir = IMAGENET_DIR / 'val'
-    img_paths = list(img_dir.rglob('*.*'))[:2000]
+    img_paths = list(img_dir.rglob('*.*'))[:1000]
 
     encode_time = 0.0
     for impath in tqdm(img_paths):
@@ -77,7 +77,7 @@ def speedtest_bpg(quality, level=8):
         assert flag
 
         tic = time()
-        cmd = f'{enc_path} -o {bits_path} -q {quality} -f 420 -e x265 -c rgb -m {level} {tmp_path}'
+        cmd = f'{enc_path} -o {bits_path} -q {quality} -f 444 -e x265 -c ycbcr -m {level} {tmp_path}'
         return_obj = subprocess.run(cmd)
         encode_time += (time() - tic)
 
@@ -90,5 +90,5 @@ if __name__ == '__main__':
     # speedtest_cv2('.jp2')
     # speedtest_cv2('.jpg')
     # speedtest_pil('JPEG')
-    # speedtest_pil('WebP')
-    speedtest_bpg(quality=5, level=1)
+    speedtest_pil('WebP')
+    # speedtest_bpg(quality=20, level=4)

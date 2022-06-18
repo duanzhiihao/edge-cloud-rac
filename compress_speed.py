@@ -19,7 +19,7 @@ def read_and_preprocess_im(impath, crop_size=224):
 
 def speedtest_model(model):
     img_dir = IMAGENET_DIR / 'val'
-    img_paths = list(img_dir.rglob('*.*'))[:2000]
+    img_paths = list(img_dir.rglob('*.*'))[:5000]
     encode_time = 0.0
     for impath in tqdm(img_paths):
         impath = str(impath)
@@ -63,7 +63,7 @@ def main():
 
     for encoder in [
         # get_model('irvine2022wacv')().bottleneck_layer,
-        get_model('s8l')().bottleneck_layer,
+        get_model('s8l_enc')().bottleneck_layer,
         # get_model('baseline_s8s')().bottleneck_layer,
         # get_model('baseline_s8t')().bottleneck_layer,
         # get_model('baseline_s8x')().bottleneck_layer,

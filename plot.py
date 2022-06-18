@@ -306,7 +306,7 @@ def plot_webp():
 
     plot(results_all['ours_s8_tiny'],       label='Feature coding - Ours, $N=0$ (joint)')
     plot(results_all['ours_s8_tiny_enc'],   label='Feature coding - Ours, $N=0$')
-    plot(results_all['webp'],               label='Image coding - WebP, speed=4')
+    plot(results_all['webp'],               label='Image coding - WebP')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -330,7 +330,7 @@ def plot_high():
 
     # plot(results_all['ours_s8_medium'], label='Feature coding - Ours, $N=4$ (joint)')
     plot(results_all['ours_s8_l_enc'],  label='Feature coding - Ours, $N=8$')
-    plot(results_all['bpg_m4'],  label='Image coding - BPG YCbCr 444, speed=4')
+    plot(results_all['bpg_m4'],  label='Image coding - BPG YCbCr 444')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
