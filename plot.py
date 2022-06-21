@@ -82,6 +82,10 @@ results_all['wacv2022_my_res'] = {
 }
 # -------------------------------- Ours, s8 --------------------------------
 # lambda = [5.12, 3.84, 2.56, 1.28, 0.64, 0.32, 0.16, 0.08, 0.06]
+results_all['ours_s8_large'] = {
+    'bpp': [0.0908, 0.1373, 0.2228, 0.313, 0.4316, 0.7092, 1.144],
+    'acc': [67.93,  70.56,  71.51,  73.0,  73.52,  74.58,  75.21],
+}
 results_all['ours_s8_l_enc'] = {
     'bpp': [0.1109, 0.1855, 0.2853, 0.4034, 0.5478, 0.818, 1.312],
     'acc': [65.54, 69.65, 71.18, 72.15, 72.41, 73.68, 74.11],
@@ -122,11 +126,15 @@ color_cycle = [cmap(i*(1/N)) for i in range(N)]
 # color_cycle[0], color_cycle[2] = color_cycle[2], color_cycle[0]
 
 for i, key in enumerate([
-    'ours_s8_tiny', 'ours_s8_medium',
+    'ours_s8_tiny', 'ours_s8_medium', 'ours_s8_large',
     'webp', 'wacv2022_code', 'bpg_m4'
 ]):
     results_all[key]['color'] = color_cycle[i]
     results_all[key]['linestyle'] = '--'
+for i, key in enumerate([
+    'ours_s8_tiny', 'ours_s8_medium', 'ours_s8_large', 'wacv2022_code'
+]):
+    results_all[key]['marker'] = '^'
 for i, key in enumerate([
     'ours_s8_tiny_enc', 'ours_s8_m_enc', 'ours_s8_l_enc'
 ]):
@@ -147,14 +155,15 @@ def simple_plot(stat, label, ax=None):
     )
     return p
 
-def plot(stat, label, ax=None):
+def plot(stat: dict, label, ax=None):
     x = stat['bpp']
     y = stat['acc']
     c = stat['color']
     ls = stat['linestyle']
+    mk = stat.get('marker', '.')
     module = ax if ax is not None else plt
     p = module.plot(x, y, label=label,
-        marker='.', markersize=10,
+        marker=mk, markersize=(10 if mk == '.' else 6),
         linestyle=ls, linewidth=1.6,
         color=c
     )
@@ -288,25 +297,25 @@ def plot_ablation():
     x_ticks = [i/10 for i in range(1, 13)]
     plt.xticks(x_ticks)
     plt.xlim(min(x_ticks), max(x_ticks))
-    plt.subplots_adjust(left=0.14, bottom=0.12, right=0.98, top=0.94)
+    plt.subplots_adjust(left=0.14, bottom=0.12, right=0.92, top=0.94)
     plt.savefig(fig_save_root / 'method-ablation.pdf')
 
-    bd = bd_accuracy(results_all['wacv2022_code'], results_all['wacv2022_my'], visualize=True)
-    print(bd)
-    bd = bd_accuracy(results_all['wacv2022_code'], results_all['wacv2022_my_res'], visualize=True)
-    print(bd)
-    bd = bd_accuracy(results_all['wacv2022_code'], results_all['ours_s8_medium'], visualize=True)
-    print(bd)
-    bd = bd_accuracy(results_all['ours_s8_medium'], results_all['ours_s16'], visualize=True)
-    print(bd)
+    # bd = bd_accuracy(results_all['wacv2022_code'], results_all['wacv2022_my'], visualize=True)
+    # print(bd)
+    # bd = bd_accuracy(results_all['wacv2022_code'], results_all['wacv2022_my_res'], visualize=True)
+    # print(bd)
+    # bd = bd_accuracy(results_all['wacv2022_code'], results_all['ours_s8_medium'], visualize=True)
+    # print(bd)
+    # bd = bd_accuracy(results_all['ours_s8_medium'], results_all['ours_s16'], visualize=True)
+    # print(bd)
 
 
 def plot_webp():
     fig1, ax = plt.subplots(figsize=(5,5))
 
     plot(results_all['ours_s8_tiny'],       label='Feature coding - Ours, $N=0$ (joint)')
-    plot(results_all['ours_s8_tiny_enc'],   label='Feature coding - Ours, $N=0$')
-    plot(results_all['webp'],               label='Image coding - WebP')
+    plot(results_all['ours_s8_tiny_enc'],   label='Feature coding - Ours, $N=0$ (cls. fixed)')
+    plot(results_all['webp'],               label='Image coding - WebP (cls. fixed)')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -317,7 +326,7 @@ def plot_medium():
     fig1, ax = plt.subplots(figsize=(5,5))
 
     plot(results_all['ours_s8_medium'], label='Feature coding - Ours, $N=4$ (joint)')
-    plot(results_all['ours_s8_m_enc'],  label='Feature coding - Ours, $N=4$')
+    plot(results_all['ours_s8_m_enc'],  label='Feature coding - Ours, $N=4$ (cls. fixed)')
     plot(results_all['wacv2022_code'],  label='Feature coding - Entropic Student (joint)')
     post_processing(ax)
     # plt.ylim()
@@ -328,9 +337,9 @@ def plot_medium():
 def plot_high():
     fig1, ax = plt.subplots(figsize=(5,5))
 
-    # plot(results_all['ours_s8_medium'], label='Feature coding - Ours, $N=4$ (joint)')
-    plot(results_all['ours_s8_l_enc'],  label='Feature coding - Ours, $N=8$')
-    plot(results_all['bpg_m4'],  label='Image coding - BPG YCbCr 444')
+    plot(results_all['ours_s8_large'], label='Feature coding - Ours, $N=8$ (joint)')
+    plot(results_all['ours_s8_l_enc'], label='Feature coding - Ours, $N=8$ (cls. fixed)')
+    plot(results_all['bpg_m4'],  label='Image coding - BPG YCbCr 444 (cls. fixed)')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -358,8 +367,8 @@ def post_processing(ax):
 
 if __name__ == '__main__':
     # plot_all()
-    # plot_ablation()
-    plot_webp()
-    plot_medium()
-    plot_high()
+    plot_ablation()
+    # plot_webp()
+    # plot_medium()
+    # plot_high()
     plt.show()
