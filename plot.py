@@ -39,6 +39,25 @@ results_all['bpg_m4'] = {
     'acc': [0.75332, 0.75086, 0.74502, 0.73518, 0.7244, 0.70818, 0.68692, 0.65518, 0.52974, 0.32936],
 }
 results_all['bpg_m4']['acc'] = [f*100 for f in results_all['bpg_m4']['acc']]
+
+results_all['factorized'] = {
+    "quality": [1, 2, 3, 4, 5, 6, 7, 8],
+    "top1": [0.4042, 0.4972, 0.57852, 0.64142, 0.6869, 0.71532, 0.7371, 0.7502],
+    "top5": [0.64852, 0.74262, 0.8134, 0.86116, 0.88974, 0.90624, 0.91782, 0.92308],
+    "bpp": [0.14721388823986054, 0.21931240211009978, 0.32559199348926543, 0.4827441032552719,
+            0.6950612151145935, 1.030377812356949, 1.450543770236969, 1.9786391837882995]
+}
+results_all['factorized']['acc'] = [f*100 for f in results_all['factorized']['top1']]
+
+results_all['hyperprior'] = {
+    "quality": [1, 2, 3, 4, 5, 6, 7, 8],
+    "top1": [0.4708, 0.56032, 0.63012, 0.68164, 0.71942, 0.73904, 0.7514, 0.7598],
+    "top5": [0.71322, 0.79848, 0.85318, 0.88712, 0.90902, 0.91828, 0.9245, 0.92894],
+    "bpp": [0.15651748197317122, 0.2388407788681984, 0.3546944114923477, 0.5183514056730271,
+            0.7187306315040588, 1.024560534954071, 1.3849496724700927, 1.8082837708473205]
+}
+results_all['hyperprior']['acc'] = [f*100 for f in results_all['hyperprior']['top1']]
+
 # -------------------------------- VQ --------------------------------
 # results_all['vq-x4'] = {
 #     'acc': [71.07, 71.96, 72.85],
@@ -127,7 +146,7 @@ color_cycle = [cmap(i*(1/N)) for i in range(N)]
 
 for i, key in enumerate([
     'ours_s8_tiny', 'ours_s8_medium', 'ours_s8_large',
-    'webp', 'wacv2022_code', 'bpg_m4'
+    'webp', 'wacv2022_code', 'bpg_m4', 'factorized', 'hyperprior'
 ]):
     results_all[key]['color'] = color_cycle[i]
     results_all[key]['linestyle'] = '--'
@@ -141,7 +160,7 @@ for i, key in enumerate([
     results_all[key]['color'] = color_cycle[i]
     results_all[key]['linestyle'] = '-'
 for i, key in enumerate([
-    'webp', 'bpg_m4'
+    'webp', 'bpg_m4', 'factorized', 'hyperprior'
 ]):
     results_all[key]['linestyle'] = '-'
 
@@ -339,7 +358,9 @@ def plot_high():
 
     plot(results_all['ours_s8_large'], label='Feature coding - Ours, $N=8$ (joint)')
     plot(results_all['ours_s8_l_enc'], label='Feature coding - Ours, $N=8$ (cls. fixed)')
-    plot(results_all['bpg_m4'],  label='Image coding - BPG YCbCr 444 (cls. fixed)')
+    plot(results_all['bpg_m4'],        label='Image coding - BPG YCbCr 444 (cls. fixed)')
+    plot(results_all['hyperprior'],    label='Image coding - Hyperprior model (cls. fixed)')
+    plot(results_all['factorized'],    label='Image coding - Factorized model (cls. fixed)')
     post_processing(ax)
     # plt.ylim()
     plt.subplots_adjust(left=0.11, bottom=0.1, right=0.98, top=0.95)
@@ -364,11 +385,10 @@ def post_processing(ax):
     plt.subplots_adjust(left=0.12, bottom=0.12, right=0.98, top=0.94)
 
 
-
 if __name__ == '__main__':
     # plot_all()
-    plot_ablation()
-    # plot_webp()
-    # plot_medium()
-    # plot_high()
+    # plot_ablation()
+    plot_webp()
+    plot_medium()
+    plot_high()
     plt.show()

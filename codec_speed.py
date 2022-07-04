@@ -34,7 +34,7 @@ def speedtest_pil(img_format, **kwargs):
         encode_time += (time() - tic)
 
     latency_ms = encode_time / float(len(img_paths)) * 1000
-    print(f'{img_format}: time per image = {latency_ms}ms')
+    print(f'{img_format}, args={kwargs}: time per image = {latency_ms}ms')
     debug = 1
 
 
@@ -90,5 +90,13 @@ if __name__ == '__main__':
     # speedtest_cv2('.jp2')
     # speedtest_cv2('.jpg')
     # speedtest_pil('JPEG')
-    speedtest_pil('WebP')
-    # speedtest_bpg(quality=20, level=4)
+    # speedtest_pil('WebP', method=0)
+    # speedtest_pil('WebP', method=1)
+    # speedtest_pil('WebP', method=2)
+    # speedtest_pil('WebP', method=3)
+    # speedtest_pil('WebP', method=4)
+    # speedtest_pil('WebP', method=5)
+    # speedtest_pil('WebP', method=6)
+    speedtest_bpg(quality=20, level=0)
+    speedtest_bpg(quality=20, level=4)
+    speedtest_bpg(quality=20, level=8)
