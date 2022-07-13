@@ -1,6 +1,7 @@
 runs/
 _test*
 _*.sh
+checkpoints/*/*
 
 
 # Byte-compiled / optimized / DLL files
