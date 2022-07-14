@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import pickle
 from tqdm import tqdm
@@ -8,7 +7,7 @@ from collections import defaultdict
 import tempfile
 import argparse
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 import torchvision as tv
 
 from models.registry import get_model
@@ -16,11 +15,9 @@ from models.registry import get_model
 
 def get_object_size(obj, unit='bits'):
     assert unit == 'bits'
-    # return sys.getsizeof(pickle.dumps(obj)) * 8
     with tempfile.TemporaryFile() as fp:
         pickle.dump(obj, fp)
         num_bits = os.fstat(fp.fileno()).st_size * 8
-        # num_bits = Path(str(fp.name)).stat().st_size * 8
     return num_bits
 
 
@@ -47,10 +44,6 @@ def evaluate_model(model, args):
 
         # sender side: compress and save
         compressed_obj = model.send(im)
-        # with tempfile.TemporaryFile('wb') as fp:
-        #     pickle.dump(compressed_obj, file=fp)
-        #     num_bits = os.fstat(fp.fileno()).st_size
-        #     debug = 1
         # sender side: compute bpp
         num_bits = get_object_size(compressed_obj)
         bpp = num_bits / float(imH * imW)
@@ -101,7 +94,6 @@ def evaluate_all_bit_rate(model_name, args):
         model = get_model(model_name)(teacher=False)
         checkpoint = torch.load(ckptpath)
         model.load_state_dict(checkpoint['model'])
-        print(f'\n saved results: {checkpoint["results"]}')
 
         model = model.to(device=device)
         model.eval()
