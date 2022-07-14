@@ -40,7 +40,8 @@ class InputBottleneck(CompressionModel):
     def compress(self, x):
         z = self.encoder(x)
         compressed_z = self.entropy_bottleneck.compress(z)
-        return compressed_z, z.shape[2:]
+        compressed_obj = (compressed_z, z.shape[2:])
+        return compressed_obj
 
     @torch.no_grad()
     def decompress(self, compressed_obj):
@@ -77,8 +78,8 @@ class BottleneckResNet(nn.Module):
             bottleneck_layer = BottleneckResNetLayerWithIGDN(zdim, 256)
         self.bottleneck_layer = bottleneck_layer
 
-        from torchvision.models.resnet import resnet50
-        resnet_model = resnet50(pretrained=True, num_classes=num_classes)
+        from torchvision.models.resnet import resnet50, ResNet50_Weights
+        resnet_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1, num_classes=num_classes)
         # if mode == 'encoder':
         #     for p in resnet_model.parameters():
         #         p.requires_grad_(False)
@@ -237,6 +238,25 @@ class BottleneckResNet(nn.Module):
             if '_teacher' in k:
                 msd.pop(k)
         return msd
+
+    def update(self):
+        self.bottleneck_layer.update()
+
+    @torch.no_grad()
+    def send(self, x):
+        compressed_obj = self.bottleneck_layer.compress(x)
+        return compressed_obj
+
+    @torch.no_grad()
+    def receive(self, compressed_obj):
+        feature = self.bottleneck_layer.decompress(compressed_obj)
+        x2 = self.layer2(feature)
+        x3 = self.layer3(x2)
+        x4 = self.layer4(x3)
+        feature = self.avgpool(x4)
+        feature = torch.flatten(feature, 1)
+        p_logits = self.fc(feature)
+        return p_logits
 
 
 @register_model

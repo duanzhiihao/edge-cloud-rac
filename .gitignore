@@ -2,6 +2,7 @@ runs/
 _test*
 _*.sh
 checkpoints/*/*
+*.zip
 
 
 # Byte-compiled / optimized / DLL files

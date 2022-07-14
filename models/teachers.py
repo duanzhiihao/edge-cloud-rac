@@ -15,8 +15,8 @@ class ResNetTeacher(nn.Module):
     def __init__(self, source='torchvision'):
         super().__init__()
         if source == 'torchvision':
-            from torchvision.models.resnet import resnet50
-            _model = resnet50(pretrained=True)
+            from torchvision.models.resnet import resnet50, ResNet50_Weights
+            _model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
             self.act1  = _model.relu
             self.global_pool = _model.avgpool
         elif source == 'timm':

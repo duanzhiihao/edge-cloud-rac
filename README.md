@@ -3,7 +3,7 @@
 
 ## Install
 **Requirements**:
-- `pytorch>=1.9`, `tqdm`, `compressai` ([link](https://github.com/InterDigitalInc/CompressAI))
+- `pytorch>=1.12`, `tqdm`, `compressai` ([link](https://github.com/InterDigitalInc/CompressAI))
 - Code has been tested on Windows and Linux with Intel CPUs and Nvidia GPUs (Python 3.9, CUDA 11.3).
 
 **Download**:
