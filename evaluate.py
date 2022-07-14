@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pickle
 from tqdm import tqdm
 from pathlib import Path
@@ -83,10 +84,19 @@ def evaluate_model(model, args):
 
 
 def evaluate_all_bit_rate(model_name, args):
-    checkpoint_paths = list(Path(f'checkpoints/{model_name}').rglob('*.pt'))
-    checkpoint_paths.sort()
     device = torch.device('cuda:0')
+    checkpoint_root = Path(f'checkpoints/{model_name}')
+    save_json_path = Path(f'results/{model_name}.json')
+    if save_json_path.is_file():
+        print(f'==== Warning: {save_json_path} already exists. Will overwrite it! ====')
+    else:
+        print(f'Will save results to {save_json_path} ...')
 
+    checkpoint_paths = list(checkpoint_root.rglob('*.pt'))
+    checkpoint_paths.sort()
+    print(f'Find {len(checkpoint_paths)} checkpoints in {checkpoint_root}. Evaluating them ...')
+
+    results_of_all_models = defaultdict(list)
     for ckptpath in checkpoint_paths:
         model = get_model(model_name)(teacher=False)
         checkpoint = torch.load(ckptpath)
@@ -99,20 +109,26 @@ def evaluate_all_bit_rate(model_name, args):
 
         results = evaluate_model(model, args)
         print(results)
+        results['checkpoint'] = str(ckptpath.relative_to(checkpoint_root))
+        for k,v in results.items():
+            results_of_all_models[k].append(v)
+
+        with open(save_json_path, 'w') as f:
+            json.dump(results_of_all_models, fp=f)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d',  '--data_root',  type=str, default='d:/datasets/imagenet/val')
-    parser.add_argument('-bs', '--batch_size', type=int, default=128)
-    parser.add_argument('-w',  '--workers',    type=int, default=0)
+    parser.add_argument('-m', '--models', type=str, nargs='+',
+        default=['ours_n0', 'ours_n4', 'ours_n8', 'ours_n0_enc', 'ours_n4_enc', 'ours_n8_enc'])
+    parser.add_argument('-d', '--data_root',  type=str, default='d:/datasets/imagenet/val')
+    parser.add_argument('-b', '--batch_size', type=int, default=128)
+    parser.add_argument('-w', '--workers',    type=int, default=0)
     args = parser.parse_args()
 
-    for model_name in [
-        'ours_n0', 'ours_n4', 'ours_n8',
-        'ours_n0_enc', 'ours_n4_enc', 'ours_n8_enc',
-    ]:
+    for model_name in args.models:
         evaluate_all_bit_rate(model_name, args)
+        print()
 
 
 if __name__ == '__main__':
