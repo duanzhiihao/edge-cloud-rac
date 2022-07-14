@@ -40,7 +40,7 @@ class InputBottleneck(CompressionModel):
     def compress(self, x):
         z = self.encoder(x)
         compressed_z = self.entropy_bottleneck.compress(z)
-        compressed_obj = (compressed_z, z.shape[2:])
+        compressed_obj = (compressed_z, tuple(z.shape[2:]))
         return compressed_obj
 
     @torch.no_grad()
