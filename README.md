@@ -24,8 +24,8 @@
 
 
 ## Usage (TBD)
-- **Feature compression**: See `demo-sender.ipynb`.
-- **Prediction from compressed feature**: See `demo-receiver.ipynb`.
+- **Feature compression**: See `example-sender.ipynb`.
+- **Prediction from compressed feature**: See `example-receiver.ipynb`.
 
 
 ## Evaluation on ImageNet
