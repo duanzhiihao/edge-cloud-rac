@@ -20,6 +20,8 @@
 | `ours_n4_enc` | 6.70ms  | [Google Drive](https://drive.google.com/file/d/1TtW76UY7-gDQ1miFRPWUhsKCG2fnLxZ2/view?usp=sharing) |
 | `ours_n8_enc` | 10.2ms  | [Google Drive](https://drive.google.com/file/d/1vZfBoa4ZzvrRaJXDuNTZjUMbjIV0IZ88/view?usp=sharing) |
 
+<img src="images/plot.png" width="384" height="384">
+
 
 ## Usage (TBD)
 - **Feature compression**: See `demo-sender.ipynb`.
