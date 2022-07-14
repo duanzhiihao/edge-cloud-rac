@@ -106,7 +106,7 @@ def evaluate_all_bit_rate(model_name, args):
             results_of_all_models[k].append(v)
 
         with open(save_json_path, 'w') as f:
-            json.dump(results_of_all_models, fp=f)
+            json.dump(results_of_all_models, fp=f, indent=4)
 
 
 def main():
