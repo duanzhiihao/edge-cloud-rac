@@ -66,7 +66,7 @@ def evaluate_model(model, args):
 
         # logging
         _cnt = stats_accumulate['count']
-        msg = ', '.join([f'{k}={v/_cnt:.4g}' for k,v in stats_accumulate.items()])
+        msg = ', '.join([f'{k}={v/_cnt:.4g}' for k,v in stats_accumulate.items() if (k != 'count')])
         pbar.set_description(msg)
     pbar.close()
 
