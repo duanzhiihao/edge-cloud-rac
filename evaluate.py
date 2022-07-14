@@ -19,7 +19,7 @@ def get_object_size(obj, unit='bits'):
     with tempfile.TemporaryFile() as fp:
         pickle.dump(obj, fp)
         # num_bits = os.fstat(fp.fileno()).st_size * 8
-        num_bits = Path(fp.name).stat().st_size * 8
+        num_bits = Path(str(fp.name)).stat().st_size * 8
     return num_bits
 
 
