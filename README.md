@@ -1,5 +1,7 @@
 # Efficient Feature Compression for Edge-Cloud Systems
 
+**Paper:** Efficient Feature Compression for Edge-Cloud Systems, published at Picture Coding Symposium (PCS) 2022 \
+**Arxiv:** https://arxiv.org/abs/2211.09897
 
 ## Install
 **Requirements**:
