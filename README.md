@@ -3,16 +3,18 @@
 **Paper:** Efficient Feature Compression for Edge-Cloud Systems, published at Picture Coding Symposium (PCS) 2022 \
 **Arxiv:** https://arxiv.org/abs/2211.09897
 
+
 ## Install
-**Requirements**:
+
+### Requirements:
 - `pytorch>=1.12`, `tqdm`, `compressai==1.2.2` ([link](https://github.com/InterDigitalInc/CompressAI))
 - Code has been tested on Windows and Linux with Intel CPUs and Nvidia GPUs (Python 3.9, CUDA 11.3).
 
-**Download**:
+### Download:
 1. Download the repository;
 2. Download the pre-trained model checkpoints and put them in the `checkpoints` folder.
 
-**Pre-trained model checkpoints**:
+### Pre-trained model checkpoints:
 |               | Latency | Link                                                                                               |
 |---------------|---------|----------------------------------------------------------------------------------------------------|
 | `ours_n0`     | 3.95ms  | [Google Drive](https://drive.google.com/file/d/1fmxiExP13TzUfNgvrnXfK3ApG8kSVLuf/view?usp=sharing) |
@@ -27,8 +29,8 @@
 <img src="images/plot.png" width="384" height="384">
 
 
-## Usage (TBD)
-- **Feature compression**: See `example-sender.ipynb`.
+## Usage
+- **Compress an image feature**: See `example-sender.ipynb`.
 - **Prediction from compressed feature**: See `example-receiver.ipynb`.
 
 
