@@ -45,7 +45,7 @@ Evaluate all models on ImageNet:
 - In `trian.py`, update `IMAGENET_DIR = Path('../../datasets/imagenet')` to the imagenet root directory;
 - Install `wandb`: https://docs.wandb.ai/quickstart
 
-### Train the model with name `ours_n4`
+### Train the `ours_n4` model
 ```
 python train.py --model ours_n4
 ```
