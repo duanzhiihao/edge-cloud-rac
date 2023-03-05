@@ -38,7 +38,59 @@ Evaluate all models on ImageNet:
 
 
 ## Training
-TBD
+
+### Preparation
+- In `trian.py`, update `IMAGENET_DIR = Path('../../datasets/imagenet')` to the imagenet root directory;
+- Install `wandb`: https://docs.wandb.ai/quickstart
+
+### Train the model with name `ours_n4`
+```
+python train.py --model ours_n4
+```
+Supported models:
+- `ours_n8`
+- `ours_n8_enc`
+- `ours_n4`
+- `ours_n4_enc`
+- `ours_n0`
+- `ours_n0_enc`
+- `matsubara2022wacv`
+
+### Specify GPU id=4
+```
+CUDA_VISIBLE_DEVICES=4 python train.py --model ours_n4
+```
+
+### Specify `bpp_lmb`
+```
+CUDA_VISIBLE_DEVICES=4 python train.py --model ours_n4 --model_args bpp_lmb=0.64
+```
+The training loss function is `loss = other_terms + lmb_bpp * bppix`:
+- A larger `bpp_lmb` results in lower bpp but lower accuracy
+- A smaller `bpp_lmb` results in higher bpp but higher accuracy
+
+
+### Specify batch size
+```
+CUDA_VISIBLE_DEVICES=4 python train.py --model ours_n4 --model_args bpp_lmb=0.64 --batch_size 128
+```
+The default batch size is 384, which we used to train our models (we used 4 GPUs, 96 on each).
+Lower batch size results in a faster training but probably worse final performance.
+
+
+### Log training using Weights & Biases
+```
+CUDA_VISIBLE_DEVICES=4 python train.py --model ours_n4 --model_args bpp_lmb=0.64 --batch_size 128 --wbmode online
+```
+By default, the run locates at https://wandb.ai/home > "edge-cloud-rac" project > "default-group" group.
+One can specify the project name and group name by `--wbproject` and `--wbgroup`
+
+
+### Multi-GPU training, using four GPUs (id=4,5,6,7)
+```
+CUDA_VISIBLE_DEVICES=4,5,6,7 torchrun --nproc_per_node 4 train.py --model ours_n4 --model_args bpp_lmb=0.64 --batch_size 96 --wbmode online --ddp_find
+```
+Note: `--ddp_find` is necessary for using multi-GPU training (PyTorch DDP)
 
 
 ## License

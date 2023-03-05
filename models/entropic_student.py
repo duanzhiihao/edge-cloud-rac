@@ -1,3 +1,5 @@
+import sys
+import pickle
 import itertools
 from collections import OrderedDict
 import torch
@@ -8,6 +10,11 @@ from compressai.layers.gdn import GDN1
 from compressai.models.google import CompressionModel
 
 from models.registry import register_model
+
+
+def get_object_size(obj, unit='bits'):
+    assert unit == 'bits'
+    return sys.getsizeof(pickle.dumps(obj)) * 8
 
 
 class InputBottleneck(CompressionModel):
@@ -80,13 +87,6 @@ class BottleneckResNet(nn.Module):
 
         from torchvision.models.resnet import resnet50, ResNet50_Weights
         resnet_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1, num_classes=num_classes)
-        # if mode == 'encoder':
-        #     for p in resnet_model.parameters():
-        #         p.requires_grad_(False)
-        #     for m in resnet_model.modules():
-        #         if isinstance(m, nn.BatchNorm2d):
-        #             m.track_running_stats = False
-        #         debug = 1
         self.layer2 = resnet_model.layer2
         self.layer3 = resnet_model.layer3
         self.layer4 = resnet_model.layer4
@@ -109,13 +109,6 @@ class BottleneckResNet(nn.Module):
                                      self.layer4.parameters(), self.fc.parameters()):
                 p.requires_grad_(False)
             self.lambdas = [1.0, 1.0, self.bpp_lmb] # cls, trs, bpp
-        elif mode == 'classifier':
-            raise DeprecationWarning()
-            for p in self.bottleneck_layer.encoder.parameters():
-                p.requires_grad_(False)
-            for p in self.bottleneck_layer.entropy_bottleneck.parameters():
-                p.requires_grad_(False)
-            self.lambdas = [1.0, 0.0, 0.0] # cls, trs, bpp
         elif mode == 'joint':
             self.lambdas = [1.0, 1.0, self.bpp_lmb] # cls, trs, bpp
         else:
@@ -202,7 +195,6 @@ class BottleneckResNet(nn.Module):
 
     @torch.no_grad()
     def self_evaluate(self, x, y):
-        raise NotImplementedError()
         nB, _, imH, imW = x.shape
         if self.compress_mode:
             compressed_obj = self.bottleneck_layer.compress(x)
