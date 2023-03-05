@@ -67,7 +67,7 @@ CUDA_VISIBLE_DEVICES=4 python train.py --model ours_n4
 ```
 CUDA_VISIBLE_DEVICES=4 python train.py --model ours_n4 --model_args bpp_lmb=0.64
 ```
-The training loss function is `loss = other_terms + lmb_bpp * bppix`:
+The training loss function is `loss = other_terms + lmb_bpp * bppix`
 - A larger `bpp_lmb` results in lower bpp but lower accuracy
 - A smaller `bpp_lmb` results in higher bpp but higher accuracy
 
