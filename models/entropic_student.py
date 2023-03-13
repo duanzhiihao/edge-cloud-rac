@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as tnf
 
 from compressai.layers.gdn import GDN1
-from compressai.models.google import CompressionModel
+from compressai.models.google import CompressionModel, EntropyBottleneck
 
 from models.registry import register_model
 
@@ -19,10 +19,11 @@ def get_object_size(obj, unit='bits'):
 
 class InputBottleneck(CompressionModel):
     def __init__(self, zdim):
-        super().__init__(entropy_bottleneck_channels=zdim)
+        super().__init__()
         self.encoder: nn.Module
         self.decoder: nn.Module
         self._flops_mode = False
+        self.entropy_bottleneck = EntropyBottleneck(zdim)
 
     def flops_mode_(self):
         self.decoder = None
